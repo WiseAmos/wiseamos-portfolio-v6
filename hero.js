@@ -162,9 +162,12 @@
       // Amplitude tapers with height so peaks barely move (anchored) while
       // valleys shimmer (signals motion). Plus a slow global drift so the
       // silhouette is always slightly different frame-to-frame.
-      float rip = 0.18 * sin(uTime * 0.55 + position.x * 0.5) * cos(uTime * 0.42 - position.z * 0.6);
-      float slow = 0.06 * sin(uTime * 0.18 + position.x * 0.2 + position.z * 0.3);
-      float h = aBakedH + rip + slow;
+      float rip = 0.28 * sin(uTime * 0.55 + position.x * 0.5) * cos(uTime * 0.42 - position.z * 0.6);
+      float slow = 0.12 * sin(uTime * 0.18 + position.x * 0.2 + position.z * 0.3);
+      // High-frequency micro-jitter — small but constant. Reads as "the
+      // surface is alive" without making peaks feel unstable.
+      float micro = 0.04 * sin(uTime * 1.4 + position.x * 1.2 + position.z * 1.6);
+      float h = aBakedH + rip + slow + micro;
 
       // Scroll lifts the terrain so peak rises into frame on scroll.
       h += uScroll * 1.8;
@@ -195,36 +198,42 @@
     varying vec3  vNormal;
 
     void main() {
+      // TRUE flat shading — recompute the per-triangle normal from screen-
+      // space derivatives of the world position. Each fragment of the same
+      // triangle gets the SAME normal so quantising the lighting produces
+      // crisp facet edges. This is what makes it "obviously 3D geometry"
+      // instead of a smooth gradient.
+      vec3 faceN = normalize(cross(dFdx(vPos), dFdy(vPos)));
+
       // Altitude palette: paper (low) → ink (mid) → clay (peak)
       float t = clamp((vHeight + 1.2) / 2.4, 0.0, 1.0);
       vec3 col = mix(uPaper, uInk, smoothstep(0.15, 0.65, t));
       col = mix(col, uClay, smoothstep(0.72, 1.0, t) * 0.9);
 
-      // Quantised faceted shading — 4 bands. Sun direction drifts slowly
-      // so the shading bands crawl across the peaks frame-to-frame
-      // (proves the geometry is alive, not baked).
+      // Quantised faceted shading — 5 hard bands. Sun direction drifts
+      // slowly so the shading bands crawl across the peaks frame-to-frame.
+      // Because faceN is constant per triangle, the floor() below produces
+      // a sharp step at every facet edge — the polygons become visible.
       vec3 sunDir = normalize(vec3(
         0.5 + 0.18 * sin(uTime * 0.12),
         1.0,
         0.4 + 0.15 * cos(uTime * 0.09)
       ));
-      float ndl = max(dot(normalize(vNormal), sunDir), 0.0);
-      float band = floor(ndl * 4.0) / 4.0;
-      col *= 0.55 + 0.55 * band;
+      float ndl = max(dot(faceN, sunDir), 0.0);
+      float band = floor(ndl * 5.0) / 5.0;
+      col *= 0.50 + 0.60 * band;
 
-      // Rim moss on upward-facing ridges
-      float rim = smoothstep(0.4, 1.0, vNormal.y) * smoothstep(0.65, 0.95, t);
-      col = mix(col, uMoss, rim * 0.35);
+      // Rim moss on upward-facing facets
+      float rim = smoothstep(0.4, 1.0, faceN.y) * smoothstep(0.65, 0.95, t);
+      col = mix(col, uMoss, rim * 0.4);
 
       // Edge fade — paper at terrain edges so it dissolves, doesn't have a hard border.
-      // Both X and Z axes fade to paper so the bottom of the scene blends
-      // into the hero's paper background, giving the lede a clean reading zone.
       float edge = smoothstep(0.0, 1.4, abs(vPos.x)) * smoothstep(0.0, 1.4, abs(vPos.z));
       col = mix(uPaper, col, 1.0 - edge * 0.85);
 
-      // Soft vertical fade — terrain fades into the paper background as it
-      // moves away from the camera Y. Creates a 'ground mist' feel.
-      float depth = smoothstep(-1.2, 0.4, vPos.z);
+      // Soft far-distance fade — only the very back of the scene fades into
+      // paper. Front-facing facets stay crisp so the polygons read as 3D.
+      float depth = smoothstep(-2.0, -0.6, vPos.z);
       col = mix(uPaper, col, depth);
 
       // Cursor warm glow patch
@@ -239,6 +248,7 @@
     uniforms,
     vertexShader: vert,
     fragmentShader: frag,
+    extensions: { derivatives: true },
   });
 
   const terrain = new THREE.Mesh(geom, mat);
@@ -251,12 +261,14 @@
   // When visible, the geometry is unambiguously 3D — you see triangles.
   const wireGeom = new THREE.WireframeGeometry(geom);
   const wireMat  = new THREE.LineBasicMaterial({
-    color: 0x14110E, transparent: true, opacity: 0.18, depthTest: true,
+    color: 0x14110E, transparent: true, opacity: 0.22, depthTest: true,
   });
   const wire = new THREE.LineSegments(wireGeom, wireMat);
   wire.position.copy(terrain.position);
   wire.rotation.copy(terrain.rotation);
-  wire.visible = false;   // off by default
+  // ON by default on desktop — this is the "obviously 3D" proof. M toggles
+  // it off if the user wants a cleaner look.
+  wire.visible = !(window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 720);
   scene.add(wire);
 
   // ---- Particles (cheap, no per-frame alloc) -------------------
@@ -421,9 +433,11 @@
     // scene is never visually frozen even when the mouse is still. The
     // "is this a video?" answer becomes obviously no once you see the
     // parallax shift across ridges.
+    // Very gentle ambient sway so the scene never feels frozen even when
+    // the mouse is still. Kept tiny — this is parallax, not wobble.
     const sway = state.time;
-    const swayX = Math.sin(sway * 0.18) * 0.12;
-    const swayY = Math.cos(sway * 0.13) * 0.06;
+    const swayX = Math.sin(sway * 0.18) * 0.04;
+    const swayY = Math.cos(sway * 0.13) * 0.02;
 
     camera.position.x = base.x + Math.sin(orbitY * 0.6) * 0.4 + swayX;
     camera.position.y = base.y - Math.abs(orbitX) * 0.5 - 0.15 + swayY;
