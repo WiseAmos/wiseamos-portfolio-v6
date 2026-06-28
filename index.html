@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Amos — engineer · Singapore</title>
+  <meta name="description" content="Amos Goh. Autonomous systems, low-latency trading, computer vision, and the kind of full-stack products that take a year to build. Singapore." />
+  <meta name="theme-color" content="#F4F1EA" />
+  <meta property="og:title" content="Amos — engineer" />
+  <meta property="og:description" content="Autonomous systems, low-latency trading, computer vision. Singapore." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><polygon points='12,3 22,21 2,21' fill='none' stroke='%2314110E' stroke-width='2'/></svg>" />
+
+  <!-- Type: Fraunces (display, italic-capable, variable) + Inter Tight + JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..600,30..100;1,9..144,300..600,30..100&family=Inter+Tight:wght@380;420;480;520;580&family=JetBrains+Mono:wght@400;500;600&display=swap" />
+
+  <link rel="stylesheet" href="./styles.css" />
+
+  <script>
+    // FOUC-safe JS marker
+    document.documentElement.classList.replace('no-js', 'js');
+  </script>
+</head>
+<body>
+
+  <!-- Custom cursor -->
+  <div class="cursor" aria-hidden="true"></div>
+  <div class="cursor__ring" aria-hidden="true"></div>
+
+  <!-- Animated grain overlay -->
+  <div class="grain" aria-hidden="true"></div>
+
+  <!-- ============== NAV ============== -->
+  <header class="nav" id="nav" data-reveal>
+    <span class="nav__progress" aria-hidden="true"></span>
+    <a href="#top" class="nav__brand" aria-label="Home">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <polygon points="12,3 22,21 2,21" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+      <span>AMOS</span>
+    </a>
+    <nav class="nav__links" aria-label="Primary">
+      <a href="#work">Work</a>
+      <a href="#process">Process</a>
+      <a href="#about">About</a>
+      <a href="#stack">Stack</a>
+      <a href="#contact">Contact</a>
+    </nav>
+    <a class="nav__cta" href="https://github.com/WiseAmos" target="_blank" rel="noopener">
+      <span class="nav__cta-label">GitHub</span>
+      <span aria-hidden="true">↗</span>
+    </a>
+  </header>
+
+  <!-- ============== SPLASH ============== -->
+  <div class="splash" id="splash" role="status" aria-label="Loading">
+    <div class="splash__inner">
+      <div class="splash__mark">amos.</div>
+      <div class="splash__bar" aria-hidden="true"></div>
+      <div class="splash__caption">Engineer · Singapore · 2026</div>
+    </div>
+  </div>
+
+  <!-- ============== HERO ============== -->
+  <main id="top">
+    <section class="hero" id="hero">
+      <!-- 3D canvas (terrain hero) -->
+      <div class="hero__canvas" id="heroCanvas" aria-hidden="true"></div>
+
+      <div class="hero__content">
+        <div class="hero__top">
+          <div>
+            <div class="hero__eyebrow-row">
+              <span class="dot" aria-hidden="true"></span>
+              <span>Available · 2026 Q3</span>
+            </div>
+
+            <h1 class="hero__title">
+              <span class="line"><span>I build</span></span>
+              <span class="line"><span>things that</span></span>
+              <span class="line"><span><em>have to work.</em></span></span>
+            </h1>
+
+            <p class="hero__lede">
+              Autonomous drones, low-latency trading, computer vision, and the
+              stubborn products in between. Based in Singapore, working on
+              systems where the second decimal place is the difference between
+              profit and ruin.
+            </p>
+          </div>
+
+          <aside class="hero__meta" aria-label="Stats">
+            <div class="hero__stat">
+              <span class="num" data-count="72">0</span>
+              <span class="lbl">Public repos</span>
+            </div>
+            <div class="hero__stat">
+              <span class="num" data-count="680">0</span>
+              <span class="lbl">Combined stars</span>
+            </div>
+            <div class="hero__stat">
+              <span class="num">SG<span style="opacity:0.4">·</span>01</span>
+              <span class="lbl">Singapore</span>
+            </div>
+          </aside>
+        </div>
+
+        <div class="hero__bottom">
+          <span class="hero__scroll-hint">
+            <span class="arrow" aria-hidden="true"></span>
+            <span>Scroll to begin</span>
+          </span>
+          <span class="hero__signature">
+            — <b>Amos Goh</b>, engineer
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== MARQUEE ============== -->
+    <div class="marquee" id="marquee" aria-hidden="true">
+      <div class="marquee__track" id="marqueeTrack">
+        <span class="word">Autonomous systems</span>
+        <span class="word word--outline">low-latency</span>
+        <span class="word">real-time inference</span>
+        <span class="word word--outline">full-stack</span>
+        <span class="word">things that ship</span>
+        <span class="word word--outline">things that work</span>
+        <!-- duplicated for seamless loop -->
+        <span class="word">Autonomous systems</span>
+        <span class="word word--outline">low-latency</span>
+        <span class="word">real-time inference</span>
+        <span class="word word--outline">full-stack</span>
+        <span class="word">things that ship</span>
+        <span class="word word--outline">things that work</span>
+      </div>
+    </div>
+
+    <!-- ============== WORK ============== -->
+    <section class="section work" id="work" data-reveal>
+      <header class="section__head">
+        <span class="eyebrow">01 · Selected work</span>
+        <h2 class="section__title">What I've been <em>building.</em></h2>
+        <p class="section__lede">
+          Nine projects spanning perception, infra, agents, and consumer
+          products. A mix of deeply-engineered backends and tightly-scoped
+          frontends. The throughline is: each one shipped, and each one works.
+        </p>
+      </header>
+
+      <div class="work__grid" id="workGrid"></div>
+    </section>
+
+    <!-- ============== PROCESS (pinned horizontal) ============== -->
+    <section class="process" id="process">
+      <header class="process__head" data-reveal>
+        <span class="eyebrow">02 · How I work</span>
+        <h2 class="process__title">A few <em>principles</em><br/>that keep the bug count down.</h2>
+        <p class="process__lede">
+          Most of what I build lives close to the metal — autonomous vehicles,
+          trading systems, face-locked laptops. The tolerance for "it kinda
+          works" is zero. Here's the loop.
+        </p>
+      </header>
+
+      <div class="process__viewport" id="processViewport">
+        <div class="process__track">
+          <div class="process__rail" id="processRail">
+
+            <article class="process__step" data-step="0">
+              <div class="process__num">01</div>
+              <div class="process__step-meta">
+                <span class="process__step-label">Step one</span>
+                <h3 class="process__step-title">Get the constraints wrong first.</h3>
+                <p class="process__step-text" data-words>
+                  Most engineering disasters start with a clean problem statement. The work is in finding the messy one. I read the spec, then I try to break it. Latency budget, failure modes, the boring middle of the day when nothing is on fire. By the time I write code I've usually decided which abstractions to throw away.
+                </p>
+              </div>
+            </article>
+
+            <article class="process__step" data-step="1">
+              <div class="process__num">02</div>
+              <div class="process__step-meta">
+                <span class="process__step-label">Step two</span>
+                <h3 class="process__step-title">Build the smallest thing that proves the model.</h3>
+                <p class="process__step-text" data-words>
+                  I don't write a thousand lines and hope. The first commit is usually a single end-to-end path with the dumbest possible implementation. Then I instrument it, run it against real data, and watch where it falls over. Once I know what's actually slow or wrong, I rewrite the parts that matter.
+                </p>
+              </div>
+            </article>
+
+            <article class="process__step" data-step="2">
+              <div class="process__num">03</div>
+              <div class="process__step-meta">
+                <span class="process__step-label">Step three</span>
+                <h3 class="process__step-title">Optimise for the human in the loop.</h3>
+                <p class="process__step-text" data-words>
+                  Most software is operated by someone at 2am. I write logs a stranger can read, dashboards a tired person can scan, error messages that name the actual problem. If a system is hard to operate, it's not finished — it's just demo-ready.
+                </p>
+              </div>
+            </article>
+
+            <article class="process__step" data-step="3">
+              <div class="process__num">04</div>
+              <div class="process__step-meta">
+                <span class="process__step-label">Step four</span>
+                <h3 class="process__step-title">Ship, then watch it fail in production.</h3>
+                <p class="process__step-text" data-words>
+                  The point of building is running. Once it's live I watch the metrics, read the errors, talk to the users. The first week of production teaches more than a month of staging ever did. Then I do the work over again, but with real numbers.
+                </p>
+              </div>
+            </article>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== ABOUT ============== -->
+    <section class="section about" id="about" data-reveal>
+      <div class="about__grid">
+        <div class="about__portrait" aria-hidden="true">
+          <div class="pattern"></div>
+          <span class="mark">a.</span>
+          <span class="corner corner--tl">SG · 01.348°N</span>
+          <span class="corner corner--tr">103.819°E</span>
+          <span class="corner corner--bl">PORTRAIT</span>
+          <span class="corner corner--br">Est. 2002</span>
+        </div>
+
+        <div class="about__body">
+          <header class="section__head" style="margin-bottom: 32px;">
+            <span class="eyebrow">03 · About</span>
+            <h2 class="section__title">Engineer based in <em>Singapore.</em></h2>
+          </header>
+
+          <p class="about__para">
+            I'm <em>Amos</em> — I build systems where correctness isn't optional.
+            High-frequency trading, autonomous vehicles, computer vision
+            products. The kind of work where a missed frame costs money or
+            a wrong label embarrasses the user.
+          </p>
+
+          <p class="about__para">
+            My day-to-day is Python, TypeScript, and a bit of Rust when the
+            latency budget tightens. I work in tight loops — spec, prototype,
+            ship, measure, repeat. I prefer the boring, debuggable solution
+            to the elegant one. <em>Most of my best work is invisible</em> —
+            it's a thing that doesn't break.
+          </p>
+
+          <p class="about__para">
+            I read more than I code, write a little, and run long enough to
+            think. Available for contract work and the occasional research
+            collaboration.
+          </p>
+
+          <div class="about__principles">
+            <div class="about__principle">
+              <span class="num">PRINCIPLE / 01</span>
+              <h4>Correctness over cleverness</h4>
+              <p>The clever solution that's wrong twice is worse than the boring one that's right.</p>
+            </div>
+            <div class="about__principle">
+              <span class="num">PRINCIPLE / 02</span>
+              <h4>Real data beats test fixtures</h4>
+              <p>If I can't run it on production traffic, I don't know if it works.</p>
+            </div>
+            <div class="about__principle">
+              <span class="num">PRINCIPLE / 03</span>
+              <h4>Operability is a feature</h4>
+              <p>Logs, dashboards, error messages — not a polish step, the work itself.</p>
+            </div>
+            <div class="about__principle">
+              <span class="num">PRINCIPLE / 04</span>
+              <h4>Ship, then iterate</h4>
+              <p>Production is the only classroom that matters. Get there fast.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============== STACK ============== -->
+    <section class="section stack" id="stack" data-reveal>
+      <header class="section__head">
+        <span class="eyebrow">04 · Tools</span>
+        <h2 class="section__title">Stack I'm <em>fluent</em> in.</h2>
+        <p class="section__lede">
+          The languages and tools I reach for first. Listed by where they
+          sit in my head, not what's fashionable. Bars are honest — they
+          reflect how much production code I've shipped in the last 18 months.
+        </p>
+      </header>
+
+      <div class="stack__grid" id="stackGrid">
+        <!-- filled by app.js -->
+      </div>
+    </section>
+
+    <!-- ============== CTA ============== -->
+    <section class="section cta" id="contact">
+      <div class="cta__head" data-reveal>
+        <span class="eyebrow">05 · Get in touch</span>
+        <h2 class="cta__title">Let's build something that <em>lasts.</em></h2>
+        <p class="section__lede" style="color: var(--mute-2);">
+          Open to contract work, research collaborations, and the occasional
+          long-running product. I reply within a day, usually faster.
+        </p>
+      </div>
+
+      <div class="cta__row">
+        <div class="cta__channels">
+          <a class="cta__channel" href="mailto:hi@amos.engineer">
+            <span class="lbl"><span>01</span> Email</span>
+            <span class="val">hi@amos.engineer <span class="arr">↗</span></span>
+          </a>
+          <a class="cta__channel" href="https://github.com/WiseAmos" target="_blank" rel="noopener">
+            <span class="lbl"><span>02</span> GitHub</span>
+            <span class="val">@WiseAmos <span class="arr">↗</span></span>
+          </a>
+          <a class="cta__channel" href="https://x.com/wiseamos" target="_blank" rel="noopener">
+            <span class="lbl"><span>03</span> X / Twitter</span>
+            <span class="val">@wiseamos <span class="arr">↗</span></span>
+          </a>
+          <a class="cta__channel" href="https://www.linkedin.com/in/wiseamos/" target="_blank" rel="noopener">
+            <span class="lbl"><span>04</span> LinkedIn</span>
+            <span class="val">in/wiseamos <span class="arr">↗</span></span>
+          </a>
+        </div>
+
+        <form class="cta__form-mini" id="contactForm" novalidate>
+          <div>
+            <label for="cf-name">Name</label>
+            <input id="cf-name" name="name" type="text" placeholder="Your name" required />
+          </div>
+          <div>
+            <label for="cf-email">Email</label>
+            <input id="cf-email" name="email" type="email" placeholder="you@somewhere.com" required />
+          </div>
+          <div>
+            <label for="cf-msg">What are you building?</label>
+            <textarea id="cf-msg" name="message" placeholder="A few sentences is plenty." required></textarea>
+          </div>
+          <button type="submit" class="cta__send">Send message</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ============== FOOTER ============== -->
+    <footer class="footer">
+      <span class="footer__colophon">© 2026 · Amos Goh</span>
+      <span class="footer__signature">Built in Singapore, on the train, mostly.</span>
+      <span>v6 · 2026.06</span>
+    </footer>
+  </main>
+
+  <!-- ============== LIBRARIES ============== -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/ScrollTrigger.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- ============== APP ============== -->
+  <script src="./projects.js"></script>
+  <script src="./hero.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
