@@ -15,6 +15,109 @@
   const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ---------------------------------------------------------------
+  // 1. Splash — BABA-style grain + scramble text + counter
+  //    Scramble "amos." → settle, counter ticks 0→100, wipe up.
+  // ---------------------------------------------------------------
+  (function splash() {
+    const el = document.getElementById('splash');
+    const mark = document.getElementById('splashMark');
+    const counter = document.getElementById('splashCounter');
+    if (!el) return;
+
+    // Block body scroll while splash is up
+    document.body.classList.add('is-splash');
+
+    if (REDUCED) { el.remove(); document.body.classList.remove('is-splash'); return; }
+
+    const SCRAMBLE_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#@%&*·';
+    const SCRAMBLE_MS = 70;
+    const SETTLE_MS   = 220;
+    const HOLD_MS     = 360;
+    const EXIT_MS     = 760;
+
+    // Wrap mark text into <span class="char"> for scramble
+    let original = '';
+    let chars = [];
+    if (mark) {
+      original = mark.dataset.text || mark.textContent;
+      mark.textContent = '';
+      chars = original.split('').map(() => {
+        const span = document.createElement('span');
+        span.className = 'char is-scrambling';
+        span.textContent = SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
+        mark.appendChild(span);
+        return span;
+      });
+    }
+
+    // Counter tick from 0 → 100
+    let pct = 0;
+    if (counter) {
+      const tick = setInterval(() => {
+        const step = Math.max(1, Math.floor((100 - pct) / 18));
+        pct = Math.min(100, pct + step);
+        counter.textContent = String(pct).padStart(3, '0');
+        if (pct >= 100) clearInterval(tick);
+      }, 60);
+    }
+
+    // Scramble + settle
+    let scrambleCount = 0;
+    let settleStarted = false;
+    const scrambleLoop = setInterval(() => {
+      scrambleCount++;
+      chars.forEach((span) => {
+        if (span.classList.contains('is-settled')) return;
+        span.textContent = SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
+      });
+      if (!settleStarted && scrambleCount >= 6) {
+        settleStarted = true;
+        let settled = 0;
+        const settleLoop = setInterval(() => {
+          if (settled >= chars.length) { clearInterval(settleLoop); return; }
+          chars[settled].textContent = original[settled];
+          chars[settled].classList.remove('is-scrambling');
+          chars[settled].classList.add('is-settled');
+          settled++;
+        }, SETTLE_MS);
+      }
+    }, SCRAMBLE_MS);
+
+    const dismiss = () => {
+      clearInterval(scrambleLoop);
+      // Ensure all chars settled before exit
+      chars.forEach((span, i) => {
+        span.textContent = original[i];
+        span.classList.remove('is-scrambling');
+        span.classList.add('is-settled');
+      });
+      if (counter) counter.textContent = '100';
+
+      setTimeout(() => {
+        el.classList.add('is-out');
+        document.body.classList.remove('is-splash');
+        setTimeout(() => el.remove(), EXIT_MS + 80);
+      }, 220);
+    };
+
+    // Auto-dismiss after the full splash cycle
+    const totalHold = 6 * SCRAMBLE_MS + chars.length * SETTLE_MS + HOLD_MS;
+    const autoTimer = setTimeout(dismiss, totalHold);
+
+    // User-initiated dismiss (click / key / scroll)
+    const onUser = () => {
+      clearTimeout(autoTimer);
+      dismiss();
+      window.removeEventListener('pointerdown', onUser);
+      window.removeEventListener('keydown', onUser);
+      window.removeEventListener('scroll', onUser);
+    };
+    window.addEventListener('pointerdown', onUser, { once: true, passive: true });
+    window.addEventListener('keydown', onUser, { once: true });
+    window.addEventListener('scroll', onUser, { once: true, passive: true });
+  })();
+
+  // ---------------------------------------------------------------
   // 1. Custom cursor (desktop, dot only, auto-hides after idle)
   // ---------------------------------------------------------------
   (function cursor() {
@@ -38,6 +141,7 @@
     addEventListener('pointermove', (e) => {
       mx = e.clientX; my = e.clientY;
       activate();
+      followStart();   // restart follow lerp on movement
     }, { passive: true });
 
     // Hide on touch / mouse leave the window
@@ -50,13 +154,26 @@
       clearTimeout(idleTimer);
     });
 
-    function loop() {
+    // Animated follow with eased lerp. Pauses when cursor settles to save
+    // paint budget — we'd otherwise write inline transforms 60×/sec forever.
+    let followRunning = false;
+    let everMoved = false;
+    function followTick() {
+      const dx = Math.abs(mx - gx), dy = Math.abs(my - gy);
+      const settled = dx < 0.1 && dy < 0.1;
       gx += (mx - gx) * 0.28;
       gy += (my - gy) * 0.28;
       dot.style.transform = `translate3d(${gx}px, ${gy}px, 0) translate(-50%, -50%)`;
-      requestAnimationFrame(loop);
+      if (settled) { followRunning = false; return; }
+      requestAnimationFrame(followTick);
     }
-    loop();
+    function followStart() {
+      everMoved = true;
+      if (!followRunning) { followRunning = true; requestAnimationFrame(followTick); }
+    }
+
+    // Kick off the follow loop on first pointer movement; idle otherwise.
+    followStart();
 
     // Hover state for interactive elements
     const interactives = 'a, button, [data-cursor="hover"], input, textarea';
@@ -69,26 +186,7 @@
   })();
 
   // ---------------------------------------------------------------
-  // 2. Splash dismiss
-  // ---------------------------------------------------------------
-  (function splash() {
-    const el = document.getElementById('splash');
-    if (!el) return;
-    if (REDUCED) { el.remove(); return; }
-
-    const dismiss = () => {
-      el.classList.add('is-out');
-      setTimeout(() => el.remove(), 700);
-    };
-    const timer = setTimeout(dismiss, 2400);
-    const onEvent = () => { clearTimeout(timer); dismiss(); window.removeEventListener('pointerdown', onEvent); window.removeEventListener('keydown', onEvent); window.removeEventListener('scroll', onEvent); };
-    window.addEventListener('pointerdown', onEvent, { once: true, passive: true });
-    window.addEventListener('keydown', onEvent, { once: true });
-    window.addEventListener('scroll', onEvent, { once: true, passive: true });
-  })();
-
-  // ---------------------------------------------------------------
-  // 3. Nav scroll progress
+  // 2. Nav scroll progress
   // ---------------------------------------------------------------
   (function navProgress() {
     const fill = document.querySelector('.nav__progress');
@@ -104,8 +202,7 @@
   })();
 
   // ---------------------------------------------------------------
-  // 4. Hero line-by-line reveal on load
-  // (CSS handles the transition; we just add .is-in after splash)
+  // 4. Hero line-by-line reveal after splash dismisses
   // ---------------------------------------------------------------
   (function heroReveal() {
     const title = document.querySelector('.hero__title');
@@ -115,8 +212,24 @@
       title.classList.add('is-in');
       return;
     }
-    // Add the class after the splash begins to dismiss
-    setTimeout(() => title.classList.add('is-in'), 500);
+    // Wait for splash to be gone, then reveal
+    const reveal = () => title.classList.add('is-in');
+    const splash = document.getElementById('splash');
+    if (!splash || splash.classList.contains('is-out')) {
+      // Splash already dismissed (or doesn't exist) — reveal now
+      setTimeout(reveal, 60);
+    } else {
+      // Observe splash for is-out class
+      const obs = new MutationObserver(() => {
+        if (splash.classList.contains('is-out')) {
+          obs.disconnect();
+          setTimeout(reveal, 240); // mid-wipe, content becoming visible
+        }
+      });
+      obs.observe(splash, { attributes: true, attributeFilter: ['class'] });
+      // Safety: if splash never exits, reveal after 2.5s anyway
+      setTimeout(() => { obs.disconnect(); reveal(); }, 2500);
+    }
   })();
 
   // ---------------------------------------------------------------

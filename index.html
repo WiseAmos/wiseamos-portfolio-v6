@@ -77,11 +77,23 @@
     </a>
   </header>
 
-  <!-- ============== SPLASH ============== -->
+  <!-- ============== SPLASH (BABA-style grain + scramble) ============== -->
   <div class="splash" id="splash" role="status" aria-label="Loading">
+    <svg class="splash__grain" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <filter id="splashN">
+        <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" stitchTiles="stitch" seed="3"/>
+        <feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.9 0"/>
+      </filter>
+      <rect width="100%" height="100%" filter="url(#splashN)"/>
+    </svg>
     <div class="splash__inner">
-      <div class="splash__mark">amos.</div>
-      <div class="splash__bar" aria-hidden="true"></div>
+      <div class="splash__mark" id="splashMark" data-text="amos.">amos.</div>
+      <div class="splash__meta">
+        <span class="splash__counter" id="splashCounter">000</span>
+        <span class="splash__counter-sep">/</span>
+        <span class="splash__counter-total">100</span>
+        <span class="splash__counter-label">loading</span>
+      </div>
       <div class="splash__caption">Engineer · Singapore · 2026</div>
     </div>
   </div>
