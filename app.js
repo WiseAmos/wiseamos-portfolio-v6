@@ -591,14 +591,30 @@
     };
 
     // JS scroll handler — single source of truth for rail + active step + word highlight
+    //
+    // Pinning model: the section is split into two phases —
+    //   (1) HEAD scroll (head_height px): the user reads the section
+    //       header. The rail is held at x=0 (step 1 visible). No
+    //       horizontal motion yet.
+    //   (2) PIN scroll (viewport_height - 100vh px = (stepCount-1) ×
+    //       100vh): the .process__track is CSS-sticky to top:0 of
+    //       viewport. The user scrolls vertically but the rail moves
+    //       horizontally, advancing through the steps.
+    //
+    // We measure progress from the VIEWPORT, not the section, so the
+    // rail only starts moving when the user has actually entered the
+    // pinned phase (not while they're still reading the head). This
+    // also fixes "rail started scrolling before I even reach it" —
+    // before the fix, the rail moved during the head scroll because
+    // progress was based on the section rect (which included the head).
     let ticking = false;
     function update() {
       ticking = false;
-      const section = document.getElementById('process');
+      const vpEl = document.getElementById('processViewport');
       const vh = window.innerHeight;
-      const rect = section.getBoundingClientRect();
-      // Section total height includes head + viewport (stepCount × 100vh).
-      // Scrollable distance = section.height - vh = head + (stepCount - 1) × 100vh
+      const rect = vpEl.getBoundingClientRect();
+      // Scrollable distance within the viewport = viewport.height - vh.
+      // (sticky track pins for this much scroll, then releases.)
       const totalScroll = rect.height - vh;
       if (totalScroll <= 0) return;
       const progress = Math.max(0, Math.min(1, -rect.top / totalScroll));
