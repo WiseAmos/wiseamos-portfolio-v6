@@ -158,16 +158,13 @@
     varying vec3  vNormal;
 
     void main() {
-      // Animated breathing — gentle wave passes across the terrain. Kept
-      // subtle so the scene reads as a quiet still-life with motion, not
-      // as something "dancing". Three slow layers compose the breathing:
-      //   - mid-frequency wave at low amplitude (visible but calm)
-      //   - slow global drift (silhouette shifts over seconds, not frames)
-      //   - micro shimmer on top (signals "alive" without making peaks
-      //     feel jittery)
-      float rip = 0.12 * sin(uTime * 0.45 + position.x * 0.5) * cos(uTime * 0.36 - position.z * 0.6);
-      float slow = 0.05 * sin(uTime * 0.16 + position.x * 0.2 + position.z * 0.3);
-      float micro = 0.015 * sin(uTime * 1.1 + position.x * 1.2 + position.z * 1.6);
+      // Animated breathing — extremely gentle so the scene reads as a
+      // still-life photograph, not as something animated. Only the
+      // mid-frequency band is meaningful; slow and micro are just enough
+      // to keep the surface from looking frozen.
+      float rip = 0.08 * sin(uTime * 0.35 + position.x * 0.5) * cos(uTime * 0.28 - position.z * 0.6);
+      float slow = 0.025 * sin(uTime * 0.12 + position.x * 0.2 + position.z * 0.3);
+      float micro = 0.008 * sin(uTime * 0.9 + position.x * 1.2 + position.z * 1.6);
       float h = aBakedH + rip + slow + micro;
 
       // Scroll lifts the terrain so peak rises into frame on scroll.
@@ -212,13 +209,14 @@
       col = mix(col, uClay, smoothstep(0.72, 1.0, t) * 0.9);
 
       // Quantised faceted shading — 5 hard bands. Sun direction drifts
-      // slowly (5-7s cycle) so the shading bands crawl across the peaks
-      // frame-to-frame. Slow drift = the scene reads as still-life, not
-      // as something strobing.
+      // extremely slowly (15-20s cycle) so the lighting bands are
+      // essentially static over short observation windows. The terrain
+      // reads as a still-life; you only notice the sun drift if you
+      // come back to the page later.
       vec3 sunDir = normalize(vec3(
-        0.5 + 0.10 * sin(uTime * 0.06),
+        0.5 + 0.05 * sin(uTime * 0.04),
         1.0,
-        0.4 + 0.08 * cos(uTime * 0.045)
+        0.4 + 0.04 * cos(uTime * 0.03)
       ));
       float ndl = max(dot(faceN, sunDir), 0.0);
       float band = floor(ndl * 5.0) / 5.0;
