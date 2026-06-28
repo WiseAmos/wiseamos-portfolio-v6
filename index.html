@@ -3,13 +3,37 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Amos — engineer · Singapore</title>
-  <meta name="description" content="Amos Goh. Autonomous systems, low-latency trading, computer vision, and the kind of full-stack products that take a year to build. Singapore." />
+
+  <title>Amos Goh — autonomous systems, low-latency trading, and tools that ship</title>
+  <meta name="description" content="Amos Goh builds autonomous systems, low-latency crypto trading infrastructure, computer vision, and full-stack products. Based in Singapore. Available for selected commissions in Q3 2026." />
+  <meta name="author" content="Amos Goh" />
   <meta name="theme-color" content="#F4F1EA" />
-  <meta property="og:title" content="Amos — engineer" />
-  <meta property="og:description" content="Autonomous systems, low-latency trading, computer vision. Singapore." />
+  <meta name="color-scheme" content="light" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Amos Goh — engineer, Singapore" />
+  <meta property="og:description" content="Autonomous systems, low-latency crypto trading, computer vision, full-stack products. 72+ open-source repos, 680+ stars on GitHub." />
   <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://wiseamos-portfolio-v6.vercel.app/" />
+  <meta property="og:image" content="./og.svg" />
+  <meta property="og:image:type" content="image/svg+xml" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:locale" content="en_SG" />
+  <meta property="og:site_name" content="Amos Goh" />
+
+  <!-- Twitter / X -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Amos Goh — engineer, Singapore" />
+  <meta name="twitter:description" content="Autonomous systems, low-latency crypto trading, CV, full-stack. 72+ repos." />
+  <meta name="twitter:image" content="./og.svg" />
+
+  <!-- Favicon (inline SVG so it ships without extra request) -->
   <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><polygon points='12,3 22,21 2,21' fill='none' stroke='%2314110E' stroke-width='2'/></svg>" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' fill='%23F4F1EA'/><polygon points='90,30 160,150 20,150' fill='none' stroke='%2314110E' stroke-width='14'/></svg>" />
+
+  <!-- Canonical -->
+  <link rel="canonical" href="https://wiseamos-portfolio-v6.vercel.app/" />
 
   <!-- Type: Fraunces (display, italic-capable, variable) + Inter Tight + JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -23,11 +47,10 @@
     document.documentElement.classList.replace('no-js', 'js');
   </script>
 </head>
-<body>
+<body id="top">
 
-  <!-- Custom cursor -->
+  <!-- Custom cursor (desktop, dot only) -->
   <div class="cursor" aria-hidden="true"></div>
-  <div class="cursor__ring" aria-hidden="true"></div>
 
   <!-- Animated grain overlay -->
   <div class="grain" aria-hidden="true"></div>
@@ -98,10 +121,10 @@
             </div>
             <div class="hero__stat">
               <span class="num" data-count="680">0</span>
-              <span class="lbl">Combined stars</span>
+              <span class="lbl">Stars earned</span>
             </div>
             <div class="hero__stat">
-              <span class="num">SG<span style="opacity:0.4">·</span>01</span>
+              <span class="num">SG·01</span>
               <span class="lbl">Singapore</span>
             </div>
           </aside>
@@ -351,9 +374,51 @@
 
     <!-- ============== FOOTER ============== -->
     <footer class="footer">
-      <span class="footer__colophon">© 2026 · Amos Goh</span>
-      <span class="footer__signature">Built in Singapore, on the train, mostly.</span>
-      <span>v6 · 2026.06</span>
+      <div class="footer__top">
+        <div class="footer__brand">
+          <div class="footer__mark" aria-hidden="true">
+            <svg viewBox="0 0 80 80" width="56" height="56">
+              <circle cx="40" cy="40" r="38" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"/>
+              <text x="40" y="52" text-anchor="middle" fill="currentColor" font-family="Georgia,serif" font-size="36" font-weight="400" font-style="italic">a.</text>
+            </svg>
+          </div>
+          <p class="footer__manifesto">
+            I build things that work at <em>2&nbsp;a.m.</em>,
+            survive the morning commit,
+            and don't need me to explain them.
+          </p>
+        </div>
+
+        <nav class="footer__nav" aria-label="Footer navigation">
+          <div class="footer__nav-col">
+            <span class="footer__nav-label">Site</span>
+            <a href="#work">Work</a>
+            <a href="#process">Process</a>
+            <a href="#about">About</a>
+            <a href="#contact">Contact</a>
+          </div>
+          <div class="footer__nav-col">
+            <span class="footer__nav-label">Elsewhere</span>
+            <a href="https://github.com/WiseAmos" target="_blank" rel="noopener">GitHub ↗</a>
+            <a href="https://huggingface.co/WiseAmos" target="_blank" rel="noopener">Hugging Face ↗</a>
+            <a href="mailto:hi@wiseamos.com">hi@wiseamos.com</a>
+          </div>
+        </nav>
+
+        <div class="footer__signal">
+          <span class="footer__signal-dot" aria-hidden="true"></span>
+          <span>Open for small, careful commissions · Q3 2026</span>
+        </div>
+      </div>
+
+      <div class="footer__bottom">
+        <span>© 2026 · Amos Goh · Singapore</span>
+        <span class="footer__coords">01.348°N / 103.819°E</span>
+        <a href="#top" class="footer__top-link" data-top>
+          Back to top
+          <span class="arrow" aria-hidden="true">↑</span>
+        </a>
+      </div>
     </footer>
   </main>
 

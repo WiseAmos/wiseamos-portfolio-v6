@@ -155,8 +155,8 @@
       float d = distance(p.xz, uMouse * 5.0);
       h += smoothstep(2.4, 0.0, d) * 0.55;
 
-      // Scroll lifts the terrain (subtle, ties hero to page motion)
-      h += uScroll * 0.6;
+      // Scroll lifts the terrain so peak rises into frame (bigger feel on scroll)
+      h += uScroll * 1.8;
 
       p.y += h;
 
@@ -230,7 +230,8 @@
   });
 
   const terrain = new THREE.Mesh(geom, mat);
-  terrain.position.y = -0.6;
+  terrain.position.y = -1.0;
+  terrain.position.x = 3.2;  // shift right so peak rises behind stats, leaves title in clean paper air
   scene.add(terrain);
 
   // Subtle floating particles (paper flecks) for depth
@@ -283,7 +284,21 @@
   }
   mount.addEventListener('pointermove', onPointer, { passive: true });
 
-  // ---- Scroll progress (only over hero) ------------------------
+  // ---- Camera (scenic descent — peak rises into frame as you scroll) ----
+  const camStart  = { x: 0,    y: 3.6,  z: 8.5 };  // wide eye, high up
+  const camMid    = { x: 0.6,  y: 1.4,  z: 4.2 };  // mid-descent, mountain filling frame
+  const camEnd    = { x: 1.4,  y: 0.3,  z: 2.4 };  // inside the mountain, peak overhead
+  const lookStart = { x: 1.0,  y: 0.4,  z: 0 };    // aim at the mountain (which is at x=2.4)
+  const lookEnd   = { x: 2.0,  y: 1.2,  z: 0 };    // tilt up at the peak as we descend into it
+
+  function lerpV(a, b, t) {
+    return {
+      x: a.x + (b.x - a.x) * t,
+      y: a.y + (b.y - a.y) * t,
+      z: a.z + (b.z - a.z) * t,
+    };
+  }
+
   function updateScroll() {
     const hero = document.getElementById('hero');
     if (!hero) { state.scroll = 0; return; }
@@ -315,11 +330,19 @@
     uniforms.uTime.value  = state.time;
     uniforms.uScroll.value = state.scroll;
 
-    // Camera drift, mouse-driven parallax
-    camera.position.x = gx * 0.6;
-    camera.position.y = 2.4 - gy * 0.4 + state.scroll * 0.5;
-    camera.position.z = 6.2 - Math.abs(gx) * 0.3;
-    camera.lookAt(gx * 0.4, -0.4 + state.scroll * 0.8, 0);
+    // Camera: scroll-driven descent + mouse parallax + zoom into mountain
+    // 0 → 0.5: lerp camStart → camMid (descend toward mountain)
+    // 0.5 → 1.0: lerp camMid → camEnd (push inside the peak, peak overhead)
+    const t = state.scroll;
+    const half = t < 0.5 ? t * 2 : 1;
+    const base = t < 0.5 ? lerpV(camStart, camMid, half) : lerpV(camMid, camEnd, half);
+    const look = lerpV(lookStart, lookEnd, t);
+
+    // Mouse parallax layered on top of scroll-driven camera
+    camera.position.x = base.x + gx * 0.4;
+    camera.position.y = base.y - gy * 0.3;
+    camera.position.z = base.z - Math.abs(gx) * 0.25;
+    camera.lookAt(look.x + gx * 0.3, look.y - gy * 0.2, look.z);
 
     // Particles drift
     if (!state.reduced) {

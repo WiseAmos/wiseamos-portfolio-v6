@@ -15,48 +15,56 @@
   const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ---------------------------------------------------------------
-  // 1. Custom cursor (desktop)
+  // 1. Custom cursor (desktop, dot only, auto-hides after idle)
   // ---------------------------------------------------------------
   (function cursor() {
-    const dot  = document.querySelector('.cursor');
-    const ring = document.querySelector('.cursor__ring');
-    if (!dot || !ring) return;
+    const dot = document.querySelector('.cursor');
+    if (!dot) return;
     if (window.matchMedia('(hover: none)').matches) return;
 
-    let mx = innerWidth/2, my = innerHeight/2;
-    let gx = mx, gy = my, rx = mx, ry = my;
+    let mx = -100, my = -100;
+    let gx = mx, gy = my;
+    let idleTimer = null;
+    const IDLE_MS = 700;
+
+    const activate = () => {
+      document.body.classList.add('cursor-active');
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        document.body.classList.remove('cursor-active');
+      }, IDLE_MS);
+    };
 
     addEventListener('pointermove', (e) => {
       mx = e.clientX; my = e.clientY;
-      if (!document.body.classList.contains('has-moved')) {
-        document.body.classList.add('has-moved');
-      }
-    }, { passive: true, once: false });
+      activate();
+    }, { passive: true });
+
+    // Hide on touch / mouse leave the window
+    addEventListener('pointerleave', () => {
+      document.body.classList.remove('cursor-active');
+      clearTimeout(idleTimer);
+    }, { passive: true });
+    addEventListener('blur', () => {
+      document.body.classList.remove('cursor-active');
+      clearTimeout(idleTimer);
+    });
 
     function loop() {
-      gx += (mx - gx) * 0.22;
-      gy += (my - gy) * 0.22;
-      rx += (mx - rx) * 0.12;
-      ry += (my - ry) * 0.12;
-      dot.style.transform  = `translate3d(${gx}px, ${gy}px, 0) translate(-50%, -50%)`;
-      ring.style.transform = `translate3d(${rx}px, ${ry}px, 0) translate(-50%, -50%)`;
+      gx += (mx - gx) * 0.28;
+      gy += (my - gy) * 0.28;
+      dot.style.transform = `translate3d(${gx}px, ${gy}px, 0) translate(-50%, -50%)`;
       requestAnimationFrame(loop);
     }
     loop();
 
     // Hover state for interactive elements
-    const interactives = 'a, button, [data-cursor="hover"]';
+    const interactives = 'a, button, [data-cursor="hover"], input, textarea';
     document.body.addEventListener('pointerover', (e) => {
-      if (e.target.closest(interactives)) {
-        dot.classList.add('is-hover');
-        ring.classList.add('is-hover');
-      }
+      if (e.target.closest(interactives)) dot.classList.add('is-hover');
     });
     document.body.addEventListener('pointerout', (e) => {
-      if (e.target.closest(interactives)) {
-        dot.classList.remove('is-hover');
-        ring.classList.remove('is-hover');
-      }
+      if (e.target.closest(interactives)) dot.classList.remove('is-hover');
     });
   })();
 
@@ -184,11 +192,146 @@
       nums.forEach(el => { el.textContent = parseInt(el.dataset.count, 10).toLocaleString(); });
       return;
     }
-    const io = new IntersectionObserver(([e]) => {
-      if (e.isIntersecting) { animate(e.target); io.disconnect(); }
-    }, { threshold: 0.5 });
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) { animate(e.target); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.4 });
     nums.forEach(n => io.observe(n));
   })();
+
+  // ---------------------------------------------------------------
+  // 7b. SVG art generator for project cards
+  // ---------------------------------------------------------------
+  function artSVG(art, p) {
+    switch (art.kind) {
+      case 'face-lock':
+        return `<svg viewBox="0 0 400 280" class="art-svg" aria-hidden="true">
+          <rect width="400" height="280" fill="#1B1A17"/>
+          <g fill="none" stroke="#B6553B" stroke-width="1">
+            <rect x="120" y="60" width="160" height="160" rx="6"/>
+            <rect x="135" y="75" width="130" height="130" rx="4"/>
+            <rect x="150" y="90" width="100" height="100" rx="3"/>
+            <line x1="120" y1="140" x2="280" y2="140"/>
+            <line x1="200" y1="60" x2="200" y2="220"/>
+          </g>
+          <circle cx="200" cy="140" r="14" fill="none" stroke="#B6553B" stroke-width="1.5"/>
+          <path d="M200 90 L210 130 L250 140 L210 150 L200 190 L190 150 L150 140 L190 130 Z" fill="#F4F1EA" opacity="0.85"/>
+          <text x="20" y="30" fill="#F4F1EA" font-family="ui-monospace,monospace" font-size="11" letter-spacing="2" opacity="0.6">PRESENCE.LOCK</text>
+          <text x="20" y="265" fill="#F4F1EA" font-family="ui-monospace,monospace" font-size="10" letter-spacing="2" opacity="0.4">SCAN • DETECT • LOCK</text>
+        </svg>`;
+      case 'marketing':
+        return `<svg viewBox="0 0 400 280" class="art-svg" aria-hidden="true">
+          <rect width="400" height="280" fill="#F4F1EA"/>
+          <g fill="#1B1A17" opacity="0.08">
+            ${Array.from({length: 12}, (_, i) => `<line x1="0" y1="${i*24+12}" x2="400" y2="${i*24+12}" stroke="#1B1A17" stroke-width="0.5"/>`).join('')}
+          </g>
+          <text x="40" y="120" fill="#1B1A17" font-family="Georgia,serif" font-size="64" font-style="italic" font-weight="300">fl.</text>
+          <rect x="40" y="150" width="60" height="3" fill="#B6553B"/>
+          <text x="40" y="180" fill="#1B1A17" font-family="ui-monospace,monospace" font-size="11" letter-spacing="2" opacity="0.5">A QUIET WEBSITE FOR A LOUD CLI</text>
+        </svg>`;
+      case 'shield':
+        return `<svg viewBox="0 0 400 280" class="art-svg" aria-hidden="true">
+          <rect width="400" height="280" fill="#1B1A17"/>
+          <g fill="none" stroke="#F4F1EA" stroke-width="1" opacity="0.15">
+            <circle cx="200" cy="140" r="100"/>
+            <circle cx="200" cy="140" r="70"/>
+            <circle cx="200" cy="140" r="40"/>
+          </g>
+          <path d="M200 60 L240 100 L240 180 Q200 220 160 180 L160 100 Z" fill="#B6553B"/>
+          <path d="M180 140 L195 155 L225 125" fill="none" stroke="#F4F1EA" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <text x="20" y="265" fill="#F4F1EA" font-family="ui-monospace,monospace" font-size="10" letter-spacing="2" opacity="0.4">SCAM SCORE 0—100</text>
+        </svg>`;
+      case 'btc':
+        return `<svg viewBox="0 0 400 280" class="art-svg" aria-hidden="true">
+          <rect width="400" height="280" fill="#0E0D0B"/>
+          ${Array.from({length: 30}, (_, i) => `<rect x="${10 + i*12}" y="${280 - (40 + Math.abs(Math.sin(i*0.7))*140)}" width="8" height="${40 + Math.abs(Math.sin(i*0.7))*140}" fill="#B6553B" opacity="${0.3 + Math.abs(Math.cos(i*0.5))*0.7}"/>`).join('')}
+          <path d="M120 80 L280 80 L280 100 L160 100 L160 130 L260 130 L260 150 L160 150 L160 200 L120 200 Z" fill="#F4F1EA" opacity="0.9"/>
+          <text x="320" y="270" fill="#F4F1EA" font-family="ui-monospace,monospace" font-size="10" letter-spacing="2" opacity="0.4" text-anchor="end">COINBASE INTX</text>
+        </svg>`;
+      case 'drone':
+        return `<svg viewBox="0 0 400 280" class="art-svg" aria-hidden="true">
+          <rect width="400" height="280" fill="#0E0D0B"/>
+          <g stroke="#B6553B" stroke-width="1" fill="none" opacity="0.5">
+            <line x1="0" y1="200" x2="400" y2="200"/>
+            <line x1="0" y1="220" x2="400" y2="220"/>
+            <line x1="0" y1="240" x2="400" y2="240"/>
+          </g>
+          <g transform="translate(200,140)">
+            <line x1="-60" y1="0" x2="60" y2="0" stroke="#F4F1EA" stroke-width="2"/>
+            <line x1="0" y1="-30" x2="0" y2="30" stroke="#F4F1EA" stroke-width="2"/>
+            <circle cx="-60" cy="0" r="22" fill="none" stroke="#F4F1EA" stroke-width="1.5"/>
+            <circle cx="60" cy="0" r="22" fill="none" stroke="#F4F1EA" stroke-width="1.5"/>
+            <circle cx="0" cy="-30" r="22" fill="none" stroke="#F4F1EA" stroke-width="1.5"/>
+            <circle cx="0" cy="30" r="22" fill="none" stroke="#F4F1EA" stroke-width="1.5"/>
+            <rect x="-15" y="-15" width="30" height="30" fill="#B6553B"/>
+          </g>
+          <text x="20" y="30" fill="#F4F1EA" font-family="ui-monospace,monospace" font-size="11" letter-spacing="2" opacity="0.6">ROS • PX4</text>
+        </svg>`;
+      case 'debate':
+        return `<svg viewBox="0 0 400 280" class="art-svg" aria-hidden="true">
+          <rect width="400" height="280" fill="#1B1A17"/>
+          <g font-family="ui-monospace,monospace" font-size="11" fill="#F4F1EA" opacity="0.7">
+            <rect x="40" y="50" width="120" height="50" fill="none" stroke="#F4F1EA" opacity="0.3"/>
+            <text x="55" y="75">AGENT A</text>
+            <text x="55" y="92" opacity="0.5">pro...</text>
+            <rect x="240" y="50" width="120" height="50" fill="none" stroke="#B6553B"/>
+            <text x="255" y="75" fill="#B6553B">AGENT B</text>
+            <text x="255" y="92" fill="#B6553B" opacity="0.7">con...</text>
+            <line x1="160" y1="75" x2="240" y2="75" stroke="#B6553B" stroke-width="1.5"/>
+            <polygon points="232,71 240,75 232,79" fill="#B6553B"/>
+            <line x1="240" y1="125" x2="160" y2="125" stroke="#F4F1EA" opacity="0.5" stroke-width="1"/>
+            <polygon points="168,121 160,125 168,129" fill="#F4F1EA" opacity="0.5"/>
+            <rect x="100" y="170" width="200" height="60" fill="none" stroke="#F4F1EA" opacity="0.2"/>
+            <text x="115" y="195" opacity="0.5">REFINING POSITION...</text>
+            <text x="115" y="215" opacity="0.3">→ EVIDENCE FOUND: 3</text>
+          </g>
+        </svg>`;
+      case 'arena':
+        return `<svg viewBox="0 0 400 280" class="art-svg" aria-hidden="true">
+          <rect width="400" height="280" fill="#F4F1EA"/>
+          <text x="40" y="160" fill="#1B1A17" font-family="Georgia,serif" font-size="120" font-weight="300">{ }</text>
+          <g fill="#B6553B">
+            <polygon points="220,80 240,80 230,100"/>
+            <polygon points="280,140 300,140 290,160"/>
+            <polygon points="240,200 260,200 250,220"/>
+          </g>
+          <text x="40" y="265" fill="#1B1A17" font-family="ui-monospace,monospace" font-size="10" letter-spacing="2" opacity="0.4">CODE • DUEL • RANK</text>
+        </svg>`;
+      case 'linkedin':
+        return `<svg viewBox="0 0 400 280" class="art-svg" aria-hidden="true">
+          <rect width="400" height="280" fill="#0E0D0B"/>
+          <text x="200" y="160" fill="#F4F1EA" font-family="Georgia,serif" font-size="160" font-weight="300" text-anchor="middle">in</text>
+          <circle cx="200" cy="170" r="120" fill="none" stroke="#B6553B" stroke-width="1" opacity="0.5"/>
+          <path d="M170 145 Q200 120 230 145 L230 165 Q200 145 170 165 Z" fill="#B6553B"/>
+        </svg>`;
+      case 'postal':
+        return `<svg viewBox="0 0 400 280" class="art-svg" aria-hidden="true">
+          <rect width="400" height="280" fill="#F4F1EA"/>
+          <g stroke="#1B1A17" stroke-width="0.5" fill="none" opacity="0.4">
+            ${Array.from({length: 8}, (_, i) => `<line x1="${i*50}" y1="0" x2="${i*50}" y2="280"/>`).join('')}
+            ${Array.from({length: 6}, (_, i) => `<line x1="0" y1="${i*50}" x2="400" y2="${i*50}"/>`).join('')}
+          </g>
+          <g fill="#B6553B">
+            <circle cx="80" cy="80" r="14" opacity="0.9"/>
+            <circle cx="160" cy="130" r="10" opacity="0.7"/>
+            <circle cx="250" cy="90" r="12" opacity="0.85"/>
+            <circle cx="320" cy="170" r="8" opacity="0.6"/>
+            <circle cx="120" cy="200" r="11" opacity="0.8"/>
+            <circle cx="280" cy="220" r="9" opacity="0.7"/>
+          </g>
+          <text x="20" y="265" fill="#1B1A17" font-family="ui-monospace,monospace" font-size="10" letter-spacing="2" opacity="0.4">SINGAPORE POSTAL · 80 SECTORS</text>
+        </svg>`;
+      default: // grid
+        return `<svg viewBox="0 0 400 280" class="art-svg" aria-hidden="true">
+          <rect width="400" height="280" fill="#1B1A17"/>
+          <g stroke="#F4F1EA" stroke-width="0.5" opacity="0.15">
+            ${Array.from({length: 16}, (_, i) => `<line x1="${i*25}" y1="0" x2="${i*25}" y2="280"/>`).join('')}
+            ${Array.from({length: 12}, (_, i) => `<line x1="0" y1="${i*25}" x2="400" y2="${i*25}"/>`).join('')}
+          </g>
+        </svg>`;
+    }
+  }
 
   // ---------------------------------------------------------------
   // 8. Work grid (render + 3D tilt on hover)
@@ -203,32 +346,30 @@
       const idx = String(i + 1).padStart(2, '0');
       const stars = p.stars != null
         ? `<span class="stars">★ ${p.stars}</span>`
-        : `<span>WIP</span>`;
+        : `<span class="wip">WIP</span>`;
       const live = p.liveDemo
-        ? `<span class="work-card__live">LIVE</span>`
+        ? `<span class="work-card__live">LIVE ↗</span>`
         : '';
-      const g = p.glyph || { mark: p.title.charAt(0), pattern: 'grid' };
-      const pat = `pattern--${g.pattern || 'grid'}`;
+      const art = p.art || { kind: 'grid' };
       return `
         <a class="work-card" data-size="${sizes[i] || 'sm'}" data-tilt
-           href="https://github.com/WiseAmos/${p.repo}" target="_blank" rel="noopener"
+           href="${p.liveDemo || `https://github.com/WiseAmos/${p.repo}`}" target="_blank" rel="noopener"
            style="--lang-color: ${p.langColor || '#14110E'};">
-          <div class="work-card__glyph">
-            <div class="pattern ${pat}"></div>
-            <span class="work-card__lang" style="background: ${p.langColor || '#14110E'};">${p.lang || 'XX'}</span>
+          <div class="work-card__art" data-art="${art.kind}">
             ${live}
-            <span class="mark">${g.mark}</span>
+            <span class="work-card__lang" style="background: ${p.langColor || '#14110E'};">${p.lang || 'XX'}</span>
+            ${artSVG(art, p)}
           </div>
           <div class="work-card__body">
             <div class="work-card__index">
               <span>${idx} / ${String(window.PROJECTS.length).padStart(2, '0')}</span>
-              <span>${p.tag || ''}</span>
+              <span class="work-card__tag">${p.tag || ''}</span>
             </div>
             <h3 class="work-card__title">${p.title}</h3>
             <p class="work-card__desc">${p.desc}</p>
             <div class="work-card__meta">
               ${stars}
-              <span class="arrow" aria-hidden="true"></span>
+              <span class="arrow" aria-hidden="true">↗</span>
             </div>
           </div>
         </a>
@@ -293,6 +434,10 @@
 
     const stepCount = steps.length;
 
+    // Tell CSS the step count so viewport height = stepCount × 100vh exactly
+    const viewport = document.getElementById('processViewport');
+    if (viewport) viewport.style.setProperty('--step-count', stepCount);
+
     const setActive = (idx) => {
       steps.forEach((s, i) => s.classList.toggle('is-active', i === idx));
     };
@@ -304,23 +449,26 @@
       const section = document.getElementById('process');
       const vh = window.innerHeight;
       const rect = section.getBoundingClientRect();
+      // Section total height includes head + viewport (stepCount × 100vh).
+      // Scrollable distance = section.height - vh = head + (stepCount - 1) × 100vh
       const totalScroll = rect.height - vh;
       if (totalScroll <= 0) return;
       const progress = Math.max(0, Math.min(1, -rect.top / totalScroll));
 
-      // Move the rail: 0 → -((stepCount - 1) * 100vw)
+      // Move the rail: 0 → -((stepCount - 1) * 100vw) over full progress
       const maxX = (stepCount - 1) * 100;
       const xPct = -progress * maxX;
       rail.style.transform = `translate3d(${xPct}vw, 0, 0)`;
 
-      // Active step (centre of viewport)
-      const activeIdx = Math.min(stepCount - 1, Math.floor(progress * stepCount + 0.0001));
+      // Active step: step N centered when progress = (N-1) / (stepCount-1)
+      // So activeIdx = round(progress * (stepCount-1))
+      const activeIdx = Math.min(stepCount - 1, Math.round(progress * (stepCount - 1)));
       setActive(activeIdx);
 
       // Per-word highlight within the active step
       const activeStep = steps[activeIdx];
       if (activeStep) {
-        const localT = (progress * stepCount) - activeIdx; // 0..1 across this step
+        const localT = (progress * (stepCount - 1)) - (activeIdx - 0.5); // 0..1 across this step
         const words = activeStep.querySelectorAll('.word');
         const lit = Math.floor(localT * words.length);
         words.forEach((w, i) => {
@@ -458,6 +606,29 @@
   // Listen for fonts loaded → re-measure
   if (document.fonts && document.fonts.ready) {
     document.fonts.ready.then(() => ScrollTrigger.refresh());
+  }
+
+  // ---------------------------------------------------------------
+  // 14. Footer back-to-top
+  // ---------------------------------------------------------------
+  document.querySelectorAll('[data-top]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: REDUCED ? 'auto' : 'smooth' });
+    });
+  });
+
+  // ---------------------------------------------------------------
+  // 15. Subtle nav-bar opacity on scroll
+  // ---------------------------------------------------------------
+  const navEl = document.querySelector('.nav');
+  if (navEl) {
+    let lastY = 0;
+    window.addEventListener('scroll', () => {
+      const y = window.scrollY;
+      navEl.classList.toggle('is-scrolled', y > 40);
+      lastY = y;
+    }, { passive: true });
   }
 
 })();
