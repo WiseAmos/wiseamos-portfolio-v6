@@ -158,10 +158,13 @@
     varying vec3  vNormal;
 
     void main() {
-      // Re-bake is unnecessary — position.y is already displaced.
-      // We only add a tiny time term so the terrain "breathes" without
-      // re-running noise.
-      float h = aBakedH + 0.12 * sin(uTime * 0.4 + position.x * 0.6) * cos(uTime * 0.3 - position.z * 0.5);
+      // Animated breathing — wave passes across the terrain at slow tempo.
+      // Amplitude tapers with height so peaks barely move (anchored) while
+      // valleys shimmer (signals motion). Plus a slow global drift so the
+      // silhouette is always slightly different frame-to-frame.
+      float rip = 0.18 * sin(uTime * 0.55 + position.x * 0.5) * cos(uTime * 0.42 - position.z * 0.6);
+      float slow = 0.06 * sin(uTime * 0.18 + position.x * 0.2 + position.z * 0.3);
+      float h = aBakedH + rip + slow;
 
       // Scroll lifts the terrain so peak rises into frame on scroll.
       h += uScroll * 1.8;
@@ -197,8 +200,14 @@
       vec3 col = mix(uPaper, uInk, smoothstep(0.15, 0.65, t));
       col = mix(col, uClay, smoothstep(0.72, 1.0, t) * 0.9);
 
-      // Quantised faceted shading — 4 bands
-      vec3 sunDir = normalize(vec3(0.5, 1.0, 0.4));
+      // Quantised faceted shading — 4 bands. Sun direction drifts slowly
+      // so the shading bands crawl across the peaks frame-to-frame
+      // (proves the geometry is alive, not baked).
+      vec3 sunDir = normalize(vec3(
+        0.5 + 0.18 * sin(uTime * 0.12),
+        1.0,
+        0.4 + 0.15 * cos(uTime * 0.09)
+      ));
       float ndl = max(dot(normalize(vNormal), sunDir), 0.0);
       float band = floor(ndl * 4.0) / 4.0;
       col *= 0.55 + 0.55 * band;
@@ -207,9 +216,16 @@
       float rim = smoothstep(0.4, 1.0, vNormal.y) * smoothstep(0.65, 0.95, t);
       col = mix(col, uMoss, rim * 0.35);
 
-      // Edge fade — paper at terrain edges so it dissolves, doesn't have a hard border
+      // Edge fade — paper at terrain edges so it dissolves, doesn't have a hard border.
+      // Both X and Z axes fade to paper so the bottom of the scene blends
+      // into the hero's paper background, giving the lede a clean reading zone.
       float edge = smoothstep(0.0, 1.4, abs(vPos.x)) * smoothstep(0.0, 1.4, abs(vPos.z));
       col = mix(uPaper, col, 1.0 - edge * 0.85);
+
+      // Soft vertical fade — terrain fades into the paper background as it
+      // moves away from the camera Y. Creates a 'ground mist' feel.
+      float depth = smoothstep(-1.2, 0.4, vPos.z);
+      col = mix(uPaper, col, depth);
 
       // Cursor warm glow patch
       float d = distance(vPos.xz, uMouse * 5.0);
@@ -354,7 +370,11 @@
 
   // ---- HUD (debug readout — top-right of canvas, under nav CTA) ----
   const hud = document.createElement('div');
+  hud.className = 'hero-hud';
   hud.style.cssText = 'position:absolute;top:72px;right:24px;font-family:var(--mono);font-size:9.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-2);background:rgba(244,241,234,0.82);padding:6px 10px;border:1px solid var(--line-soft);backdrop-filter:blur(4px);pointer-events:none;z-index:4;line-height:1.6;white-space:nowrap;text-align:right;';
+  // Hidden on touch + small viewports — orbit/wireframe toggles are
+  // desktop debug affordances, not user-facing chrome.
+  if (window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 720) hud.style.display = 'none';
   hud.innerHTML = `WebGL terrain · ${SEG*SEG} verts<br><span style="color:var(--mute-2)">drag to orbit · M wireframe · G grid</span>`;
   mount.appendChild(hud);
 
@@ -397,8 +417,16 @@
     const base = t < 0.5 ? lerpV(camStart, camMid, half) : lerpV(camMid, camEnd, half);
     const look = lerpV(lookStart, lookEnd, t);
 
-    camera.position.x = base.x + Math.sin(orbitY * 0.6) * 0.4;
-    camera.position.y = base.y - Math.abs(orbitX) * 0.5 - 0.15;
+    // Ambient camera sway — slow sinusoidal drift in both axes so the
+    // scene is never visually frozen even when the mouse is still. The
+    // "is this a video?" answer becomes obviously no once you see the
+    // parallax shift across ridges.
+    const sway = state.time;
+    const swayX = Math.sin(sway * 0.18) * 0.12;
+    const swayY = Math.cos(sway * 0.13) * 0.06;
+
+    camera.position.x = base.x + Math.sin(orbitY * 0.6) * 0.4 + swayX;
+    camera.position.y = base.y - Math.abs(orbitX) * 0.5 - 0.15 + swayY;
     camera.position.z = base.z + Math.cos(orbitY * 0.6) * 0.4;
     camera.lookAt(look.x, look.y + orbitX * 0.4, look.z);
 
