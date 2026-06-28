@@ -158,15 +158,16 @@
     varying vec3  vNormal;
 
     void main() {
-      // Animated breathing — wave passes across the terrain at slow tempo.
-      // Amplitude tapers with height so peaks barely move (anchored) while
-      // valleys shimmer (signals motion). Plus a slow global drift so the
-      // silhouette is always slightly different frame-to-frame.
-      float rip = 0.28 * sin(uTime * 0.55 + position.x * 0.5) * cos(uTime * 0.42 - position.z * 0.6);
-      float slow = 0.12 * sin(uTime * 0.18 + position.x * 0.2 + position.z * 0.3);
-      // High-frequency micro-jitter — small but constant. Reads as "the
-      // surface is alive" without making peaks feel unstable.
-      float micro = 0.04 * sin(uTime * 1.4 + position.x * 1.2 + position.z * 1.6);
+      // Animated breathing — gentle wave passes across the terrain. Kept
+      // subtle so the scene reads as a quiet still-life with motion, not
+      // as something "dancing". Three slow layers compose the breathing:
+      //   - mid-frequency wave at low amplitude (visible but calm)
+      //   - slow global drift (silhouette shifts over seconds, not frames)
+      //   - micro shimmer on top (signals "alive" without making peaks
+      //     feel jittery)
+      float rip = 0.12 * sin(uTime * 0.45 + position.x * 0.5) * cos(uTime * 0.36 - position.z * 0.6);
+      float slow = 0.05 * sin(uTime * 0.16 + position.x * 0.2 + position.z * 0.3);
+      float micro = 0.015 * sin(uTime * 1.1 + position.x * 1.2 + position.z * 1.6);
       float h = aBakedH + rip + slow + micro;
 
       // Scroll lifts the terrain so peak rises into frame on scroll.
@@ -211,13 +212,13 @@
       col = mix(col, uClay, smoothstep(0.72, 1.0, t) * 0.9);
 
       // Quantised faceted shading — 5 hard bands. Sun direction drifts
-      // slowly so the shading bands crawl across the peaks frame-to-frame.
-      // Because faceN is constant per triangle, the floor() below produces
-      // a sharp step at every facet edge — the polygons become visible.
+      // slowly (5-7s cycle) so the shading bands crawl across the peaks
+      // frame-to-frame. Slow drift = the scene reads as still-life, not
+      // as something strobing.
       vec3 sunDir = normalize(vec3(
-        0.5 + 0.18 * sin(uTime * 0.12),
+        0.5 + 0.10 * sin(uTime * 0.06),
         1.0,
-        0.4 + 0.15 * cos(uTime * 0.09)
+        0.4 + 0.08 * cos(uTime * 0.045)
       ));
       float ndl = max(dot(faceN, sunDir), 0.0);
       float band = floor(ndl * 5.0) / 5.0;
@@ -433,11 +434,12 @@
     // scene is never visually frozen even when the mouse is still. The
     // "is this a video?" answer becomes obviously no once you see the
     // parallax shift across ridges.
-    // Very gentle ambient sway so the scene never feels frozen even when
-    // the mouse is still. Kept tiny — this is parallax, not wobble.
-    const sway = state.time;
-    const swayX = Math.sin(sway * 0.18) * 0.04;
-    const swayY = Math.cos(sway * 0.13) * 0.02;
+    // No ambient camera sway — the scene is parallax-stable. Sun drift
+    // and vertex breathing provide all the motion. Sway was reading as
+    // "dancing" so we leave the camera locked at its scroll/derived
+    // position.
+    const swayX = 0;
+    const swayY = 0;
 
     camera.position.x = base.x + Math.sin(orbitY * 0.6) * 0.4 + swayX;
     camera.position.y = base.y - Math.abs(orbitX) * 0.5 - 0.15 + swayY;
