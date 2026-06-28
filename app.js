@@ -233,26 +233,61 @@
   })();
 
   // ---------------------------------------------------------------
-  // 5. Marquee (scroll-tied, no autoplay — user-driven)
+  // 5. Marquee — scroll-tied, gated to "in view", no drift
+  //
+  // Design choice: marquee motion is locked to the moment the user is
+  // *passing through* the marquee band, not to every scroll on the
+  // page. The marquee sits ~98px above the bottom of the hero viewport,
+  // so without a gate it moves whenever the user scrolls anywhere on
+  // the page — which reads as "the text started scrolling before I
+  // even reach it". IntersectionObserver gates the motion: only when
+  // the marquee band is intersecting the viewport does scroll deltas
+  // advance the track. Off-screen → track holds its last position.
+  //
+  // Easing: zero. The track snaps to target — no inertia, no
+  // post-scroll drift. The marquee is a tactile readout of scroll,
+  // not an animation.
   // ---------------------------------------------------------------
   (function marquee() {
+    const root = document.getElementById('marquee');
     const track = document.getElementById('marqueeTrack');
-    if (!track) return;
+    if (!root || !track) return;
+
     let x = 0;
     let targetX = 0;
     let lastScrollY = window.scrollY;
+    let active = false;
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) active = e.isIntersecting;
+      },
+      // Gate: only active when the marquee band is *passing through*
+      // the viewport — i.e. the user is scrolling the marquee, not
+      // just peeking at it from the hero above. Negative bottom
+      // rootMargin shrinks the gate so the marquee activates ONLY
+      // when it occupies the middle/lower portion of the viewport.
+      // -50% bottom means the gate flips on when the marquee's top
+      // crosses 50% of viewport height (= user has scrolled past the
+      // hero into the work section).
+      { threshold: 0, rootMargin: '0px 0px -55% 0px' }
+    );
+    io.observe(root);
 
     function onScroll() {
+      if (!active) return;
       const dy = window.scrollY - lastScrollY;
       lastScrollY = window.scrollY;
-      // Speed: drift right when scrolling down, left when up
-      targetX -= dy * 0.4;
+      // Gentle scroll-multiplier. 0.15 = ~15px of horizontal track per
+      // 100px of vertical scroll, just enough to register as "the
+      // marquee is responding to me" without feeling eager.
+      targetX -= dy * 0.15;
     }
     addEventListener('scroll', onScroll, { passive: true });
 
     function loop() {
-      x += (targetX - x) * 0.08;
-      // Wrap to keep the value bounded
+      // Snap — no easing. Stop-motion feel.
+      x = targetX;
       const w = track.scrollWidth / 2;
       if (w > 0) {
         if (x < -w) x += w;
