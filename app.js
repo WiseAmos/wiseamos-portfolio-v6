@@ -1,7 +1,8 @@
 // =================================================================
-// app.js — Portfolio v6
-// Splash, cursor, marquee, GSAP scroll choreography, work grid,
-// pinned process with per-word highlight, stack list, contact form
+// app.js — Portfolio v6 (Aggressive cut: 1.5vh target)
+// Hero reveal, work grid with 6 projects, section reveal, nav,
+// smooth anchors, footer back-to-top. Dropped: splash, marquee,
+// process, stack, contact form.
 // =================================================================
 
 (function () {
@@ -9,200 +10,11 @@
 
   gsap.registerPlugin(ScrollTrigger);
 
-  // ---------------------------------------------------------------
   // Reduced motion shortcut
-  // ---------------------------------------------------------------
   const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ---------------------------------------------------------------
-  // 1. Splash — BABA-style grain + scramble text + counter
-  //    Scramble "amos." → settle, counter ticks 0→100, wipe up.
-  // ---------------------------------------------------------------
-  (function splash() {
-    const el = document.getElementById('splash');
-    const mark = document.getElementById('splashMark');
-    const counter = document.getElementById('splashCounter');
-    if (!el) return;
-
-    // Block body scroll while splash is up
-    document.body.classList.add('is-splash');
-
-    if (REDUCED) { el.remove(); document.body.classList.remove('is-splash'); return; }
-
-    const SCRAMBLE_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#@%&*·';
-    const SCRAMBLE_MS = 70;
-    const SETTLE_MS   = 220;
-    const HOLD_MS     = 360;
-    const EXIT_MS     = 760;
-
-    // Wrap mark text into <span class="char"> for scramble
-    let original = '';
-    let chars = [];
-    if (mark) {
-      original = mark.dataset.text || mark.textContent;
-      mark.textContent = '';
-      chars = original.split('').map(() => {
-        const span = document.createElement('span');
-        span.className = 'char is-scrambling';
-        span.textContent = SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
-        mark.appendChild(span);
-        return span;
-      });
-    }
-
-    // Counter tick from 0 → 100
-    let pct = 0;
-    if (counter) {
-      const tick = setInterval(() => {
-        const step = Math.max(1, Math.floor((100 - pct) / 18));
-        pct = Math.min(100, pct + step);
-        counter.textContent = String(pct).padStart(3, '0');
-        if (pct >= 100) clearInterval(tick);
-      }, 60);
-    }
-
-    // Scramble + settle
-    let scrambleCount = 0;
-    let settleStarted = false;
-    const scrambleLoop = setInterval(() => {
-      scrambleCount++;
-      chars.forEach((span) => {
-        if (span.classList.contains('is-settled')) return;
-        span.textContent = SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
-      });
-      if (!settleStarted && scrambleCount >= 6) {
-        settleStarted = true;
-        let settled = 0;
-        const settleLoop = setInterval(() => {
-          if (settled >= chars.length) { clearInterval(settleLoop); return; }
-          chars[settled].textContent = original[settled];
-          chars[settled].classList.remove('is-scrambling');
-          chars[settled].classList.add('is-settled');
-          settled++;
-        }, SETTLE_MS);
-      }
-    }, SCRAMBLE_MS);
-
-    const dismiss = () => {
-      clearInterval(scrambleLoop);
-      // Ensure all chars settled before exit
-      chars.forEach((span, i) => {
-        span.textContent = original[i];
-        span.classList.remove('is-scrambling');
-        span.classList.add('is-settled');
-      });
-      if (counter) counter.textContent = '100';
-
-      setTimeout(() => {
-        el.classList.add('is-out');
-        document.body.classList.remove('is-splash');
-        setTimeout(() => el.remove(), EXIT_MS + 80);
-      }, 220);
-    };
-
-    // Auto-dismiss after the full splash cycle
-    const totalHold = 6 * SCRAMBLE_MS + chars.length * SETTLE_MS + HOLD_MS;
-    const autoTimer = setTimeout(dismiss, totalHold);
-
-    // User-initiated dismiss (click / key / scroll)
-    const onUser = () => {
-      clearTimeout(autoTimer);
-      dismiss();
-      window.removeEventListener('pointerdown', onUser);
-      window.removeEventListener('keydown', onUser);
-      window.removeEventListener('scroll', onUser);
-    };
-    window.addEventListener('pointerdown', onUser, { once: true, passive: true });
-    window.addEventListener('keydown', onUser, { once: true });
-    window.addEventListener('scroll', onUser, { once: true, passive: true });
-  })();
-
-  // ---------------------------------------------------------------
-  // 1. Custom cursor (desktop, dot only, auto-hides after idle)
-  // ---------------------------------------------------------------
-  (function cursor() {
-    const dot = document.querySelector('.cursor');
-    if (!dot) return;
-    if (window.matchMedia('(hover: none)').matches) return;
-
-    let mx = -100, my = -100;
-    let gx = mx, gy = my;
-    let idleTimer = null;
-    const IDLE_MS = 700;
-
-    const activate = () => {
-      document.body.classList.add('cursor-active');
-      clearTimeout(idleTimer);
-      idleTimer = setTimeout(() => {
-        document.body.classList.remove('cursor-active');
-      }, IDLE_MS);
-    };
-
-    addEventListener('pointermove', (e) => {
-      mx = e.clientX; my = e.clientY;
-      activate();
-      followStart();   // restart follow lerp on movement
-    }, { passive: true });
-
-    // Hide on touch / mouse leave the window
-    addEventListener('pointerleave', () => {
-      document.body.classList.remove('cursor-active');
-      clearTimeout(idleTimer);
-    }, { passive: true });
-    addEventListener('blur', () => {
-      document.body.classList.remove('cursor-active');
-      clearTimeout(idleTimer);
-    });
-
-    // Animated follow with eased lerp. Pauses when cursor settles to save
-    // paint budget — we'd otherwise write inline transforms 60×/sec forever.
-    let followRunning = false;
-    let everMoved = false;
-    function followTick() {
-      const dx = Math.abs(mx - gx), dy = Math.abs(my - gy);
-      const settled = dx < 0.1 && dy < 0.1;
-      gx += (mx - gx) * 0.28;
-      gy += (my - gy) * 0.28;
-      dot.style.transform = `translate3d(${gx}px, ${gy}px, 0) translate(-50%, -50%)`;
-      if (settled) { followRunning = false; return; }
-      requestAnimationFrame(followTick);
-    }
-    function followStart() {
-      everMoved = true;
-      if (!followRunning) { followRunning = true; requestAnimationFrame(followTick); }
-    }
-
-    // Kick off the follow loop on first pointer movement; idle otherwise.
-    followStart();
-
-    // Hover state for interactive elements
-    const interactives = 'a, button, [data-cursor="hover"], input, textarea';
-    document.body.addEventListener('pointerover', (e) => {
-      if (e.target.closest(interactives)) dot.classList.add('is-hover');
-    });
-    document.body.addEventListener('pointerout', (e) => {
-      if (e.target.closest(interactives)) dot.classList.remove('is-hover');
-    });
-  })();
-
-  // ---------------------------------------------------------------
-  // 2. Nav scroll progress
-  // ---------------------------------------------------------------
-  (function navProgress() {
-    const fill = document.querySelector('.nav__progress');
-    if (!fill) return;
-    const set = () => {
-      const max = document.documentElement.scrollHeight - innerHeight;
-      const pct = max > 0 ? (window.scrollY / max) * 100 : 0;
-      document.documentElement.style.setProperty('--scroll', `${pct}%`);
-    };
-    set();
-    addEventListener('scroll', set, { passive: true });
-    addEventListener('resize', set);
-  })();
-
-  // ---------------------------------------------------------------
-  // 4. Hero line-by-line reveal after splash dismisses
+  // 1. Hero line-by-line reveal on load
   // ---------------------------------------------------------------
   (function heroReveal() {
     const title = document.querySelector('.hero__title');
@@ -212,95 +24,35 @@
       title.classList.add('is-in');
       return;
     }
-    // Wait for splash to be gone, then reveal
-    const reveal = () => title.classList.add('is-in');
-    const splash = document.getElementById('splash');
-    if (!splash || splash.classList.contains('is-out')) {
-      // Splash already dismissed (or doesn't exist) — reveal now
-      setTimeout(reveal, 60);
-    } else {
-      // Observe splash for is-out class
-      const obs = new MutationObserver(() => {
-        if (splash.classList.contains('is-out')) {
-          obs.disconnect();
-          setTimeout(reveal, 240); // mid-wipe, content becoming visible
-        }
-      });
-      obs.observe(splash, { attributes: true, attributeFilter: ['class'] });
-      // Safety: if splash never exits, reveal after 2.5s anyway
-      setTimeout(() => { obs.disconnect(); reveal(); }, 2500);
+    setTimeout(() => title.classList.add('is-in'), 60);
+  })();
+
+  // ---------------------------------------------------------------
+  // 2. Nav scroll progress + is-scrolled class
+  // ---------------------------------------------------------------
+  (function nav() {
+    const fill = document.querySelector('.nav__progress');
+    const set = () => {
+      const max = document.documentElement.scrollHeight - innerHeight;
+      const pct = max > 0 ? (window.scrollY / max) * 100 : 0;
+      document.documentElement.style.setProperty('--scroll', `${pct}%`);
+    };
+    if (fill) {
+      set();
+      addEventListener('scroll', set, { passive: true });
+      addEventListener('resize', set);
+    }
+
+    const navEl = document.querySelector('.nav');
+    if (navEl) {
+      addEventListener('scroll', () => {
+        navEl.classList.toggle('is-scrolled', window.scrollY > 40);
+      }, { passive: true });
     }
   })();
 
   // ---------------------------------------------------------------
-  // 5. Marquee — scroll-tied, gated to "in view", no drift
-  //
-  // Design choice: marquee motion is locked to the moment the user is
-  // *passing through* the marquee band, not to every scroll on the
-  // page. The marquee sits ~98px above the bottom of the hero viewport,
-  // so without a gate it moves whenever the user scrolls anywhere on
-  // the page — which reads as "the text started scrolling before I
-  // even reach it". IntersectionObserver gates the motion: only when
-  // the marquee band is intersecting the viewport does scroll deltas
-  // advance the track. Off-screen → track holds its last position.
-  //
-  // Easing: zero. The track snaps to target — no inertia, no
-  // post-scroll drift. The marquee is a tactile readout of scroll,
-  // not an animation.
-  // ---------------------------------------------------------------
-  (function marquee() {
-    const root = document.getElementById('marquee');
-    const track = document.getElementById('marqueeTrack');
-    if (!root || !track) return;
-
-    let x = 0;
-    let targetX = 0;
-    let lastScrollY = window.scrollY;
-    let active = false;
-
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) active = e.isIntersecting;
-      },
-      // Gate: only active when the marquee band is *passing through*
-      // the viewport — i.e. the user is scrolling the marquee, not
-      // just peeking at it from the hero above. Negative bottom
-      // rootMargin shrinks the gate so the marquee activates ONLY
-      // when it occupies the middle/lower portion of the viewport.
-      // -50% bottom means the gate flips on when the marquee's top
-      // crosses 50% of viewport height (= user has scrolled past the
-      // hero into the work section).
-      { threshold: 0, rootMargin: '0px 0px -55% 0px' }
-    );
-    io.observe(root);
-
-    function onScroll() {
-      if (!active) return;
-      const dy = window.scrollY - lastScrollY;
-      lastScrollY = window.scrollY;
-      // Gentle scroll-multiplier. 0.15 = ~15px of horizontal track per
-      // 100px of vertical scroll, just enough to register as "the
-      // marquee is responding to me" without feeling eager.
-      targetX -= dy * 0.15;
-    }
-    addEventListener('scroll', onScroll, { passive: true });
-
-    function loop() {
-      // Snap — no easing. Stop-motion feel.
-      x = targetX;
-      const w = track.scrollWidth / 2;
-      if (w > 0) {
-        if (x < -w) x += w;
-        if (x > 0)  x -= w;
-      }
-      track.style.transform = `translate3d(${x}px, 0, 0)`;
-      requestAnimationFrame(loop);
-    }
-    loop();
-  })();
-
-  // ---------------------------------------------------------------
-  // 6. Section reveal on scroll
+  // 3. Section reveal on scroll
   // ---------------------------------------------------------------
   (function sectionReveal() {
     const els = document.querySelectorAll('[data-reveal]');
@@ -320,38 +72,9 @@
   })();
 
   // ---------------------------------------------------------------
-  // 7. Counters (hero stats)
+  // 4. SVG art generator for project cards
   // ---------------------------------------------------------------
-  (function counters() {
-    const nums = document.querySelectorAll('[data-count]');
-    const animate = (el) => {
-      const target = parseInt(el.dataset.count, 10);
-      const obj = { n: 0 };
-      gsap.to(obj, {
-        n: target,
-        duration: 1.8,
-        ease: 'power2.out',
-        delay: 0.7,
-        onUpdate: () => { el.textContent = Math.round(obj.n).toLocaleString(); },
-        onComplete: () => { el.textContent = target.toLocaleString(); },
-      });
-    };
-    if (REDUCED) {
-      nums.forEach(el => { el.textContent = parseInt(el.dataset.count, 10).toLocaleString(); });
-      return;
-    }
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach(e => {
-        if (e.isIntersecting) { animate(e.target); io.unobserve(e.target); }
-      });
-    }, { threshold: 0.4 });
-    nums.forEach(n => io.observe(n));
-  })();
-
-  // ---------------------------------------------------------------
-  // 7b. SVG art generator for project cards
-  // ---------------------------------------------------------------
-  function artSVG(art, p) {
+  function artSVG(art) {
     switch (art.kind) {
       case 'face-lock':
         return `<svg viewBox="0 0 400 280" class="art-svg" aria-hidden="true">
@@ -367,16 +90,6 @@
           <path d="M200 90 L210 130 L250 140 L210 150 L200 190 L190 150 L150 140 L190 130 Z" fill="#F4F1EA" opacity="0.85"/>
           <text x="20" y="30" fill="#F4F1EA" font-family="ui-monospace,monospace" font-size="11" letter-spacing="2" opacity="0.6">PRESENCE.LOCK</text>
           <text x="20" y="265" fill="#F4F1EA" font-family="ui-monospace,monospace" font-size="10" letter-spacing="2" opacity="0.4">SCAN • DETECT • LOCK</text>
-        </svg>`;
-      case 'marketing':
-        return `<svg viewBox="0 0 400 280" class="art-svg" aria-hidden="true">
-          <rect width="400" height="280" fill="#F4F1EA"/>
-          <g fill="#1B1A17" opacity="0.08">
-            ${Array.from({length: 12}, (_, i) => `<line x1="0" y1="${i*24+12}" x2="400" y2="${i*24+12}" stroke="#1B1A17" stroke-width="0.5"/>`).join('')}
-          </g>
-          <text x="40" y="120" fill="#1B1A17" font-family="Georgia,serif" font-size="64" font-style="italic" font-weight="300">fl.</text>
-          <rect x="40" y="150" width="60" height="3" fill="#B6553B"/>
-          <text x="40" y="180" fill="#1B1A17" font-family="ui-monospace,monospace" font-size="11" letter-spacing="2" opacity="0.5">A QUIET WEBSITE FOR A LOUD CLI</text>
         </svg>`;
       case 'shield':
         return `<svg viewBox="0 0 400 280" class="art-svg" aria-hidden="true">
@@ -446,31 +159,7 @@
           </g>
           <text x="40" y="265" fill="#1B1A17" font-family="ui-monospace,monospace" font-size="10" letter-spacing="2" opacity="0.4">CODE • DUEL • RANK</text>
         </svg>`;
-      case 'linkedin':
-        return `<svg viewBox="0 0 400 280" class="art-svg" aria-hidden="true">
-          <rect width="400" height="280" fill="#0E0D0B"/>
-          <text x="200" y="160" fill="#F4F1EA" font-family="Georgia,serif" font-size="160" font-weight="300" text-anchor="middle">in</text>
-          <circle cx="200" cy="170" r="120" fill="none" stroke="#B6553B" stroke-width="1" opacity="0.5"/>
-          <path d="M170 145 Q200 120 230 145 L230 165 Q200 145 170 165 Z" fill="#B6553B"/>
-        </svg>`;
-      case 'postal':
-        return `<svg viewBox="0 0 400 280" class="art-svg" aria-hidden="true">
-          <rect width="400" height="280" fill="#F4F1EA"/>
-          <g stroke="#1B1A17" stroke-width="0.5" fill="none" opacity="0.4">
-            ${Array.from({length: 8}, (_, i) => `<line x1="${i*50}" y1="0" x2="${i*50}" y2="280"/>`).join('')}
-            ${Array.from({length: 6}, (_, i) => `<line x1="0" y1="${i*50}" x2="400" y2="${i*50}"/>`).join('')}
-          </g>
-          <g fill="#B6553B">
-            <circle cx="80" cy="80" r="14" opacity="0.9"/>
-            <circle cx="160" cy="130" r="10" opacity="0.7"/>
-            <circle cx="250" cy="90" r="12" opacity="0.85"/>
-            <circle cx="320" cy="170" r="8" opacity="0.6"/>
-            <circle cx="120" cy="200" r="11" opacity="0.8"/>
-            <circle cx="280" cy="220" r="9" opacity="0.7"/>
-          </g>
-          <text x="20" y="265" fill="#1B1A17" font-family="ui-monospace,monospace" font-size="10" letter-spacing="2" opacity="0.4">SINGAPORE POSTAL · 80 SECTORS</text>
-        </svg>`;
-      default: // grid
+      default:
         return `<svg viewBox="0 0 400 280" class="art-svg" aria-hidden="true">
           <rect width="400" height="280" fill="#1B1A17"/>
           <g stroke="#F4F1EA" stroke-width="0.5" opacity="0.15">
@@ -482,14 +171,14 @@
   }
 
   // ---------------------------------------------------------------
-  // 8. Work grid (render + 3D tilt on hover)
+  // 5. Work grid (render + 3D tilt on hover) — 6 projects now
   // ---------------------------------------------------------------
   (function workGrid() {
     const grid = document.getElementById('workGrid');
     if (!grid || !window.PROJECTS) return;
 
-    // Sizing logic: 9 projects → big/medium/small mix
-    const sizes = ['lg', 'md', 'sm', 'sm', 'lg', 'md', 'sm', 'sm', 'md'];
+    // 6 projects → big/medium alternating
+    const sizes = ['lg', 'md', 'lg', 'md', 'md', 'lg'];
     const html = window.PROJECTS.map((p, i) => {
       const idx = String(i + 1).padStart(2, '0');
       const stars = p.stars != null
@@ -506,7 +195,7 @@
           <div class="work-card__art" data-art="${art.kind}">
             ${live}
             <span class="work-card__lang" style="background: ${p.langColor || '#14110E'};">${p.lang || 'XX'}</span>
-            ${artSVG(art, p)}
+            ${artSVG(art)}
           </div>
           <div class="work-card__body">
             <div class="work-card__index">
@@ -530,14 +219,14 @@
       const cards = grid.querySelectorAll('[data-tilt]');
       cards.forEach(card => {
         let raf = null;
-        let tx = 0, ty = 0;     // current
-        let ttx = 0, tty = 0;   // target
+        let tx = 0, ty = 0;
+        let ttx = 0, tty = 0;
         const onMove = (e) => {
           const r = card.getBoundingClientRect();
           const px = (e.clientX - r.left) / r.width;
-          const py = (e.clientY - r.top)  / r.height;
-          ttx = (px - 0.5) * -8;  // rotateY
-          tty = (py - 0.5) *  6;  // rotateX
+          const py = (e.clientY - r.top) / r.height;
+          ttx = (px - 0.5) * -8;
+          tty = (py - 0.5) * 6;
         };
         const tick = () => {
           tx += (ttx - tx) * 0.12;
@@ -562,191 +251,7 @@
   })();
 
   // ---------------------------------------------------------------
-  // 9. Process (horizontal pinned scroll + per-word highlight)
-  // ---------------------------------------------------------------
-  (function process() {
-    const rail   = document.getElementById('processRail');
-    const steps  = document.querySelectorAll('.process__step');
-    if (!rail || !steps.length) return;
-
-    // Wrap each word in <span class="word"> for the per-word highlight
-    steps.forEach(step => {
-      const p = step.querySelector('.process__step-text');
-      if (!p || p.dataset.wordsWrapped) return;
-      p.dataset.wordsWrapped = '1';
-      p.innerHTML = p.textContent.split(/(\s+)/).map(token => {
-        if (/^\s+$/.test(token)) return token;
-        return `<span class="word">${token}</span>`;
-      }).join('');
-    });
-
-    const stepCount = steps.length;
-
-    // Tell CSS the step count so viewport height = stepCount × 100vh exactly
-    const viewport = document.getElementById('processViewport');
-    if (viewport) viewport.style.setProperty('--step-count', stepCount);
-
-    const setActive = (idx) => {
-      steps.forEach((s, i) => s.classList.toggle('is-active', i === idx));
-    };
-
-    // JS scroll handler — single source of truth for rail + active step + word highlight
-    //
-    // Pinning model: the section is split into two phases —
-    //   (1) HEAD scroll (head_height px): the user reads the section
-    //       header. The rail is held at x=0 (step 1 visible). No
-    //       horizontal motion yet.
-    //   (2) PIN scroll (viewport_height - 100vh px = (stepCount-1) ×
-    //       100vh): the .process__track is CSS-sticky to top:0 of
-    //       viewport. The user scrolls vertically but the rail moves
-    //       horizontally, advancing through the steps.
-    //
-    // We measure progress from the VIEWPORT, not the section, so the
-    // rail only starts moving when the user has actually entered the
-    // pinned phase (not while they're still reading the head). This
-    // also fixes "rail started scrolling before I even reach it" —
-    // before the fix, the rail moved during the head scroll because
-    // progress was based on the section rect (which included the head).
-    let ticking = false;
-    function update() {
-      ticking = false;
-      const vpEl = document.getElementById('processViewport');
-      const vh = window.innerHeight;
-      const rect = vpEl.getBoundingClientRect();
-      // Scrollable distance within the viewport = viewport.height - vh.
-      // (sticky track pins for this much scroll, then releases.)
-      const totalScroll = rect.height - vh;
-      if (totalScroll <= 0) return;
-      const progress = Math.max(0, Math.min(1, -rect.top / totalScroll));
-
-      // Move the rail: 0 → -((stepCount - 1) * 100vw) over full progress
-      const maxX = (stepCount - 1) * 100;
-      const xPct = -progress * maxX;
-      rail.style.transform = `translate3d(${xPct}vw, 0, 0)`;
-
-      // Active step: step N centered when progress = (N-1) / (stepCount-1)
-      // So activeIdx = round(progress * (stepCount-1))
-      const activeIdx = Math.min(stepCount - 1, Math.round(progress * (stepCount - 1)));
-      setActive(activeIdx);
-
-      // Per-word highlight within the active step
-      const activeStep = steps[activeIdx];
-      if (activeStep) {
-        const localT = (progress * (stepCount - 1)) - (activeIdx - 0.5); // 0..1 across this step
-        const words = activeStep.querySelectorAll('.word');
-        const lit = Math.floor(localT * words.length);
-        words.forEach((w, i) => {
-          const wantLit = i < lit;
-          if (wantLit && !w.dataset.lit) {
-            w.classList.add('is-lit');
-            w.dataset.lit = '1';
-          } else if (!wantLit && w.dataset.lit) {
-            w.classList.remove('is-lit');
-            delete w.dataset.lit;
-          }
-        });
-      }
-    }
-    addEventListener('scroll', () => {
-      if (!ticking) {
-        requestAnimationFrame(() => update());
-        ticking = true;
-      }
-    }, { passive: true });
-
-    // Set initial state once layout is stable
-    requestAnimationFrame(() => {
-      update();
-      ScrollTrigger.refresh();
-    });
-  })();
-
-  // ---------------------------------------------------------------
-  // 10. Stack list (data → DOM)
-  // ---------------------------------------------------------------
-  (function stack() {
-    const grid = document.getElementById('stackGrid');
-    if (!grid) return;
-    const STACK = [
-      { cat: 'Languages', items: [
-        { name: 'Python',    lvl: 5 },
-        { name: 'TypeScript', lvl: 5 },
-        { name: 'JavaScript', lvl: 5 },
-        { name: 'Rust',      lvl: 3 },
-        { name: 'C++',       lvl: 3 },
-        { name: 'SQL',       lvl: 4 },
-        { name: 'Solidity',  lvl: 3 },
-      ]},
-      { cat: 'Frameworks & runtimes', items: [
-        { name: 'React / Next',  lvl: 5 },
-        { name: 'Node.js',       lvl: 5 },
-        { name: 'Three.js',      lvl: 4 },
-        { name: 'FastAPI',       lvl: 4 },
-        { name: 'GSAP',          lvl: 4 },
-        { name: 'Tailwind',      lvl: 4 },
-        { name: 'Express',       lvl: 4 },
-      ]},
-      { cat: 'Infra & data', items: [
-        { name: 'AWS (S3, EC2, Lambda)', lvl: 4 },
-        { name: 'Vercel + Cloudflare',   lvl: 5 },
-        { name: 'Postgres / SQLite',     lvl: 4 },
-        { name: 'Redis / Kafka',         lvl: 3 },
-        { name: 'Docker',                lvl: 4 },
-        { name: 'GitHub Actions',        lvl: 4 },
-      ]},
-      { cat: 'Domains', items: [
-        { name: 'High-frequency trading', lvl: 5 },
-        { name: 'Computer vision (OpenCV)', lvl: 5 },
-        { name: 'Autonomous systems',     lvl: 4 },
-        { name: 'LLM agents',             lvl: 4 },
-        { name: 'Real-time inference',    lvl: 4 },
-        { name: 'WebGL / shaders',        lvl: 3 },
-      ]},
-    ];
-    const html = STACK.map(col => `
-      <div class="stack__col">
-        <div class="stack__cat">${col.cat}</div>
-        <div class="stack__items">
-          ${col.items.map((it, i) => {
-            const bars = Array.from({length: 5}, (_, k) =>
-              `<span class="bar ${k < it.lvl ? 'is-on' : ''}"></span>`).join('');
-            const num = String(i + 1).padStart(2, '0');
-            return `
-              <div class="stack__item">
-                <span class="dot">${num}</span>
-                <span class="name">${it.name}</span>
-                <span class="lvl">${bars}</span>
-              </div>
-            `;
-          }).join('')}
-        </div>
-      </div>
-    `).join('');
-    grid.innerHTML = html;
-  })();
-
-  // ---------------------------------------------------------------
-  // 11. Contact form (mailto: fallback, no backend)
-  // ---------------------------------------------------------------
-  (function contactForm() {
-    const form = document.getElementById('contactForm');
-    if (!form) return;
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const data = new FormData(form);
-      const name = data.get('name') || '';
-      const email = data.get('email') || '';
-      const msg = data.get('message') || '';
-      const subject = encodeURIComponent(`[portfolio] ${name} — get in touch`);
-      const body = encodeURIComponent(`From: ${name} <${email}>\n\n${msg}\n\n— sent from wiseamos-portfolio v6`);
-      const a = document.createElement('a');
-      a.href = `mailto:hi@amos.engineer?subject=${subject}&body=${body}`;
-      a.click();
-    });
-  })();
-
-  // ---------------------------------------------------------------
-  // 12. Smooth-scroll anchor handler
+  // 6. Smooth-scroll anchor handler
   // ---------------------------------------------------------------
   (function smoothAnchors() {
     document.querySelectorAll('a[href^="#"]').forEach(a => {
@@ -763,17 +268,7 @@
   })();
 
   // ---------------------------------------------------------------
-  // 13. Trigger initial reveal
-  // ---------------------------------------------------------------
-  setTimeout(() => ScrollTrigger.refresh(), 300);
-
-  // Listen for fonts loaded → re-measure
-  if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(() => ScrollTrigger.refresh());
-  }
-
-  // ---------------------------------------------------------------
-  // 14. Footer back-to-top
+  // 7. Footer back-to-top
   // ---------------------------------------------------------------
   document.querySelectorAll('[data-top]').forEach(el => {
     el.addEventListener('click', e => {
@@ -783,16 +278,11 @@
   });
 
   // ---------------------------------------------------------------
-  // 15. Subtle nav-bar opacity on scroll
+  // 8. Initial ScrollTrigger refresh + fonts ready
   // ---------------------------------------------------------------
-  const navEl = document.querySelector('.nav');
-  if (navEl) {
-    let lastY = 0;
-    window.addEventListener('scroll', () => {
-      const y = window.scrollY;
-      navEl.classList.toggle('is-scrolled', y > 40);
-      lastY = y;
-    }, { passive: true });
+  setTimeout(() => ScrollTrigger.refresh(), 300);
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => ScrollTrigger.refresh());
   }
 
 })();

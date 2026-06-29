@@ -1,14 +1,6 @@
 // Curated projects. Rendered as cards in app.js.
-// lang = short code (PY, TS, RS, GO, SOL, JS, C++) shown on the card.
-// langColor = solid color of the language swatch.
-// liveDemo = optional URL to a deployed demo (rendered as LIVE link).
-// stars = number of github stars (shown on card hover for credibility).
-// glyph = the big typographic mark in the card's glyph slot.
-//         shape: { mark: 'string', accent: 'string', pattern: 'string' }
-//           mark: 1-3 chars shown huge in the card (e.g. 'FL', 'BTC')
-//           accent: optional small accent char layered (e.g. '✦', '●')
-//           pattern: 'grid' | 'bars' | 'rings' | 'cross' | 'dots' | 'lines' | 'frame' | 'stack'
-//                    — the background pattern for the glyph slot
+// 6 strongest projects — chosen for breadth (CV, infra/HFT, robotics,
+// agents, consumer) and shipping cred (stars + live demo).
 window.PROJECTS = [
   {
     repo: "face-lock",
@@ -21,30 +13,6 @@ window.PROJECTS = [
     liveDemo: "https://face-lock.site",
     stars: 320,
     art: { kind: "face-lock" },
-  },
-  {
-    repo: "face-lock-site",
-    title: "Face-Lock.site",
-    desc: "Marketing site for the Face-Lock CLI. Static + minimal, built to convert.",
-    tag: "frontend",
-    lang: "TS",
-    langColor: "#3178C6",
-    topics: ["typescript", "marketing"],
-    liveDemo: "https://face-lock.site",
-    stars: 4,
-    art: { kind: "marketing" },
-  },
-  {
-    repo: "shoppingshield",
-    title: "ShoppingShield",
-    desc: "Anti-scam platform that protects users from fraudulent e-commerce sites. Real-time risk scoring and browser tooling.",
-    tag: "consumer · safety",
-    lang: "TS",
-    langColor: "#3178C6",
-    topics: ["typescript", "security"],
-    liveDemo: null,
-    stars: 47,
-    art: { kind: "shield" },
   },
   {
     repo: "btc-perp-hft-framework",
@@ -83,6 +51,18 @@ window.PROJECTS = [
     art: { kind: "debate" },
   },
   {
+    repo: "shoppingshield",
+    title: "ShoppingShield",
+    desc: "Anti-scam platform that protects users from fraudulent e-commerce sites. Real-time risk scoring and browser tooling.",
+    tag: "consumer · safety",
+    lang: "TS",
+    langColor: "#3178C6",
+    topics: ["typescript", "security"],
+    liveDemo: null,
+    stars: 47,
+    art: { kind: "shield" },
+  },
+  {
     repo: "CodeColosseum",
     title: "CodeColosseum",
     desc: "LeetCode training tool that turns grind into a tournament. Gamified competitive practice for engineers.",
@@ -93,29 +73,5 @@ window.PROJECTS = [
     liveDemo: "https://codecolosseum.com",
     stars: 12,
     art: { kind: "arena" },
-  },
-  {
-    repo: "dateonlinkedin",
-    title: "Date on LinkedIn",
-    desc: "Dating platform exclusive to LinkedIn. Profile-first matching for people who care about what someone does.",
-    tag: "consumer",
-    lang: "TS",
-    langColor: "#3178C6",
-    topics: ["typescript"],
-    liveDemo: null,
-    stars: 8,
-    art: { kind: "linkedin" },
-  },
-  {
-    repo: "postal_code_visualizer",
-    title: "Postal Code Visualizer",
-    desc: "A small, honest project I built for my secondary school to visualize postal code regions. Good code scales with the people who use it.",
-    tag: "web · civic",
-    lang: "TS",
-    langColor: "#3178C6",
-    topics: ["typescript", "data-viz"],
-    liveDemo: "https://postal-code-visualizer.vercel.app",
-    stars: 6,
-    art: { kind: "postal" },
   },
 ];

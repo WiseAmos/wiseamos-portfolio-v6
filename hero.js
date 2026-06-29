@@ -1,16 +1,19 @@
 // =================================================================
-// hero.js — WebGL faceted terrain, optimized + clearly-3D
+// hero.js — WebGL faceted terrain, quiet background of hero
 //
 // Architecture: FBM noise is computed on the CPU ONCE at load.
 // Vertices + normals are baked into BufferAttributes. Per-frame the
 // shader only runs a tiny time/elevation update — no per-vertex noise.
 //
-// Mouse parallax now produces visible orbit (rotation around Y) so
-// the silhouette of the mountain changes as you move — that's the
-// "obviously 3D" cue. Drag adds yaw/pitch on top.
+// Mouse parallax + drag produce visible orbit (rotation around the
+// mountain peak) so the silhouette changes as the visitor interacts.
+// Scroll past the hero drives a 50° camera arc — the mountain rotates
+// from a near-front view at scroll=0 to a 3/4 view at scroll=1.
 //
-// Shortcuts:  M toggles mesh wireframe overlay (debug-y but proves it's
-// geometry, not a video). F shows frame-time stats. Press G for grid.
+// The terrain is a quiet background. NO HUD overlay, NO "drag to orbit"
+// instructions, NO keyboard shortcut hints — those were anti-patterns
+// (video-game tutorial feel). The visitor sees a mountain, sees text
+// front-and-center, and can interact if they want.
 // =================================================================
 
 (function heroScene() {
@@ -20,8 +23,6 @@
 
   // ---- Perf flags ------------------------------------------------
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  // Auto-reduce work on low-end devices
-  const isMobile = matchMedia('(max-width: 700px)').matches;
   const isLowEnd = (navigator.hardwareConcurrency || 4) <= 4;
 
   // ---- Scene + camera -------------------------------------------
@@ -39,8 +40,6 @@
   try {
     renderer = new THREE.WebGLRenderer({
       canvas,
-      // Antialiasing OFF — quantised band shading is the aesthetic, AA blurs it.
-      // Also: AA at 2x DPR was costing ~40% of frame budget.
       antialias: false,
       alpha: true,
       powerPreference: 'high-performance',
@@ -48,20 +47,16 @@
       depth: true,
     });
   } catch (err) {
-    mount.innerHTML = '<div style="position:absolute;inset:0;display:grid;place-items:center;font-family:var(--mono);font-size:11px;letter-spacing:0.24em;color:var(--mute-2)">WEBGL UNAVAILABLE</div>';
+    mount.innerHTML = '';
     return;
   }
   if (!renderer.getContext()) {
-    mount.innerHTML = '<div style="position:absolute;inset:0;display:grid;place-items:center;font-family:var(--mono);font-size:11px;letter-spacing:0.24em;color:var(--mute-2)">WEBGL UNAVAILABLE</div>';
+    mount.innerHTML = '';
     return;
   }
 
   // ---- CPU-side noise (3D simplex, MIT) -------------------------
-  // Cheap hash-based variant — not as smooth as the full Ashima permute
-  // chain, but ~5x faster and good enough for terrain height. FBM runs
-  // ONCE on the CPU at load, baking vertex Y displacement + normals.
   function snoise(x, y, z) {
-    // Standard 3D simplex noise (compact form, MIT-licensed Ashima)
     const F3 = 1/3, G3 = 1/6;
     const s = (x + y + z) * F3;
     const i = Math.floor(x + s), j = Math.floor(y + s), k = Math.floor(z + s);
@@ -83,8 +78,6 @@
     const x3 = x0 - 1 + 3*G3,    y3 = y0 - 1 + 3*G3,    z3 = z0 - 1 + 3*G3;
     const ii = i & 255, jj = j & 255, kk = k & 255;
     const perm = (xx, yy, zz) => {
-      // Hash lookup, simplified — not as smooth as Ashima's full permute but
-      // good enough for terrain height. ~5x cheaper than full permute chain.
       const h = ((xx * 374761393) ^ (yy * 668265263) ^ (zz * 2147483647)) >>> 0;
       return ((h % 256) / 256) * 2 - 1;
     };
@@ -114,15 +107,11 @@
   }
 
   // ---- Terrain mesh (baked on CPU once) -------------------------
-  // Smaller segments than before (was 80x80 = 6400 verts). 56x56 = 3136.
-  // Faceted look survives because the shader quantises lighting per-vertex.
   const SIZE = 12;
   const SEG  = isLowEnd ? 44 : 56;
   const geom = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG);
   geom.rotateX(-Math.PI / 2);
 
-  // Bake vertex Y displacement once, plus per-vertex "maxHeight" attribute
-  // the shader uses to drive the palette without re-running noise.
   const pos    = geom.attributes.position;
   const bakedH = new Float32Array(pos.count);
   for (let i = 0; i < pos.count; i++) {
@@ -132,7 +121,7 @@
     bakedH[i] = h;
   }
   geom.setAttribute('aBakedH', new THREE.BufferAttribute(bakedH, 1));
-  geom.computeVertexNormals();   // exact normals from baked positions — no normal estimation in shader
+  geom.computeVertexNormals();
 
   const uniforms = {
     uTime:    { value: 0 },
@@ -142,8 +131,6 @@
     uInk:     { value: new THREE.Color(0x14110E) },
     uPaper:   { value: new THREE.Color(0xF4F1EA) },
     uMoss:    { value: new THREE.Color(0x4A5D3A) },
-    uOrbitY:  { value: 0 },   // mouse-driven yaw (visible silhouette change)
-    uOrbitX:  { value: 0 },   // mouse-driven pitch (visible)
   };
 
   const vert = /* glsl */`
@@ -158,20 +145,14 @@
     varying vec3  vNormal;
 
     void main() {
-      // Animated breathing — extremely gentle so the scene reads as a
-      // still-life photograph, not as something animated. Only the
-      // mid-frequency band is meaningful; slow and micro are just enough
-      // to keep the surface from looking frozen.
       float rip = 0.08 * sin(uTime * 0.35 + position.x * 0.5) * cos(uTime * 0.28 - position.z * 0.6);
       float slow = 0.025 * sin(uTime * 0.12 + position.x * 0.2 + position.z * 0.3);
       float micro = 0.008 * sin(uTime * 0.9 + position.x * 1.2 + position.z * 1.6);
       float h = aBakedH + rip + slow + micro;
-
-      // Scroll lifts the terrain so peak rises into frame on scroll.
       h += uScroll * 1.8;
 
       vec3 p = position;
-      p.y += h - aBakedH;   // base offset is already in position.y from CPU bake; this is the deltas
+      p.y += h - aBakedH;
 
       vPos    = p;
       vHeight = h;
@@ -185,7 +166,6 @@
 
     uniform float uTime;
     uniform vec2  uMouse;
-    uniform float uScroll;
     uniform vec3  uClay;
     uniform vec3  uInk;
     uniform vec3  uPaper;
@@ -196,23 +176,12 @@
     varying vec3  vNormal;
 
     void main() {
-      // TRUE flat shading — recompute the per-triangle normal from screen-
-      // space derivatives of the world position. Each fragment of the same
-      // triangle gets the SAME normal so quantising the lighting produces
-      // crisp facet edges. This is what makes it "obviously 3D geometry"
-      // instead of a smooth gradient.
       vec3 faceN = normalize(cross(dFdx(vPos), dFdy(vPos)));
 
-      // Altitude palette: paper (low) → ink (mid) → clay (peak)
       float t = clamp((vHeight + 1.2) / 2.4, 0.0, 1.0);
       vec3 col = mix(uPaper, uInk, smoothstep(0.15, 0.65, t));
       col = mix(col, uClay, smoothstep(0.72, 1.0, t) * 0.9);
 
-      // Quantised faceted shading — 5 hard bands. Sun direction drifts
-      // extremely slowly (15-20s cycle) so the lighting bands are
-      // essentially static over short observation windows. The terrain
-      // reads as a still-life; you only notice the sun drift if you
-      // come back to the page later.
       vec3 sunDir = normalize(vec3(
         0.5 + 0.05 * sin(uTime * 0.04),
         1.0,
@@ -222,20 +191,15 @@
       float band = floor(ndl * 5.0) / 5.0;
       col *= 0.50 + 0.60 * band;
 
-      // Rim moss on upward-facing facets
       float rim = smoothstep(0.4, 1.0, faceN.y) * smoothstep(0.65, 0.95, t);
       col = mix(col, uMoss, rim * 0.4);
 
-      // Edge fade — paper at terrain edges so it dissolves, doesn't have a hard border.
       float edge = smoothstep(0.0, 1.4, abs(vPos.x)) * smoothstep(0.0, 1.4, abs(vPos.z));
       col = mix(uPaper, col, 1.0 - edge * 0.85);
 
-      // Soft far-distance fade — only the very back of the scene fades into
-      // paper. Front-facing facets stay crisp so the polygons read as 3D.
       float depth = smoothstep(-2.0, -0.6, vPos.z);
       col = mix(uPaper, col, depth);
 
-      // Cursor warm glow patch
       float d = distance(vPos.xz, uMouse * 5.0);
       col = mix(col, uClay, smoothstep(1.8, 0.0, d) * 0.12);
 
@@ -254,21 +218,6 @@
   terrain.position.y = -1.0;
   terrain.position.x = 3.2;
   scene.add(terrain);
-
-  // ---- Wireframe overlay (toggle with M) ------------------------
-  // Adds literal triangulation lines ON TOP of the shaded terrain.
-  // When visible, the geometry is unambiguously 3D — you see triangles.
-  const wireGeom = new THREE.WireframeGeometry(geom);
-  const wireMat  = new THREE.LineBasicMaterial({
-    color: 0x14110E, transparent: true, opacity: 0.22, depthTest: true,
-  });
-  const wire = new THREE.LineSegments(wireGeom, wireMat);
-  wire.position.copy(terrain.position);
-  wire.rotation.copy(terrain.rotation);
-  // ON by default on desktop — this is the "obviously 3D" proof. M toggles
-  // it off if the user wants a cleaner look.
-  wire.visible = !(window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 720);
-  scene.add(wire);
 
   // ---- Particles (cheap, no per-frame alloc) -------------------
   const particleCount = reduced ? 0 : (isLowEnd ? 30 : 50);
@@ -294,7 +243,6 @@
     const w = mount.clientWidth;
     const h = mount.clientHeight;
     if (w === 0 || h === 0) { requestAnimationFrame(resize); return; }
-    // DPR capped at 1.5 — antialias is OFF so we don't need 2x.
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
@@ -318,8 +266,6 @@
   mount.addEventListener('pointermove', onPointer, { passive: true });
 
   // ---- Drag-to-orbit -------------------------------------------
-  // Makes the 3D-ness unambiguous — drag rotates the camera around
-  // the mountain, silhouette changes dramatically.
   let dragging = false, dragX = 0, dragY = 0;
   let yawAdd = 0, pitchAdd = 0;
   mount.addEventListener('pointerdown', (e) => {
@@ -344,27 +290,7 @@
     dragX = e.clientX; dragY = e.clientY;
   });
 
-  // ---- Keyboard toggles (debug-y but prove it's 3D) ------------
-  window.addEventListener('keydown', (e) => {
-    if (e.target && /input|textarea/i.test(e.target.tagName)) return;
-    if (e.key === 'm' || e.key === 'M') { wire.visible = !wire.visible; }
-    if (e.key === 'g' || e.key === 'G') { wire.visible = false; grid.visible = !grid.visible; }
-  });
-
-  // ---- Ground grid (toggle with G) -----------------------------
-  const grid = new THREE.GridHelper(20, 20, 0x14110E, 0x14110E);
-  grid.material.transparent = true;
-  grid.material.opacity = 0.08;
-  grid.position.y = -1.01;
-  grid.position.x = 3.2;
-  grid.visible = false;
-  scene.add(grid);
-
-  // ---- Camera paths (scroll-driven descent + camera orbit) --------
-  // Pulled back (z: 8.5→11, 4.2→5.5, 2.4→3.2) from the v3 hero — the mountain
-  // read as too zoomed-in at narrow aspects, the peak filled the canvas edge
-  // to edge with no breathing room. The new distances leave ~25% sky on top
-  // and ~20% paper band on the bottom at all viewports.
+  // ---- Camera paths (scroll-driven descent + camera orbit) ------
   const camStart  = { x: 0,    y: 3.8,  z: 11.0 };
   const camMid    = { x: 0.6,  y: 1.5,  z: 5.5  };
   const camEnd    = { x: 1.4,  y: 0.3,  z: 3.2  };
@@ -374,159 +300,76 @@
     return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t };
   }
 
-  // Scroll-driven orbit camera. The hero section is .hero { min-height: 88vh },
-// which is shorter than the viewport — there's nothing to scroll WITHIN the
-// hero. So we drive the camera orbit from how far the user has scrolled PAST
-// the hero top, not within it. state.scroll = 0 when hero top hits viewport
-// top (user just landed), = 1 when the hero bottom has scrolled past the
-// bottom of the viewport (user has moved on to the next section).
+  // Scroll-driven orbit camera.
   function updateScroll() {
     const hero = document.getElementById('hero');
     if (!hero) { state.scroll = 0; return; }
     const r = hero.getBoundingClientRect();
-    const vh = window.innerHeight;
-    // Distance from "hero top at viewport top" to "hero bottom at viewport bottom"
-    const travel = r.height;                  // hero height (≈ 88vh)
-    const scrolled = Math.max(0, -r.top);     // how far past hero top the user has scrolled
+    const travel = r.height;
+    const scrolled = Math.max(0, -r.top);
     state.scroll = travel > 0 ? Math.max(0, Math.min(1, scrolled / travel)) : 0;
   }
   const state = { scroll: 0, time: 0, isVisible: false };
 
-  // ---- HUD (debug readout — top-right of hero, under nav CTA) ----
-  // Mounted into the .hero section (NOT into .hero__canvas) because the canvas
-  // now has a right-edge mask. If the HUD lived inside .hero__canvas, the mask
-  // would fade it into the paper background too.
-  const hud = document.createElement('div');
-  hud.className = 'hero-hud';
-  // Hidden on touch + small viewports — orbit/wireframe toggles are
-  // desktop debug affordances, not user-facing chrome.
-  if (window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 720) hud.style.display = 'none';
-  hud.innerHTML = `WebGL terrain · ${SEG*SEG} verts<br><span style="color:var(--mute-2)">drag to orbit · M wireframe · G grid</span>`;
-  // Append to .hero (section), not .hero__canvas (the masked mount).
-  (mount.parentElement || mount).appendChild(hud);
-
-  // ---- Mobile HUD (slim, friendly, hides after first interaction) --------
-  let mobileHud = null;
-  let mobileHudTimer = 0;
-  if (isMobile) {
-    mobileHud = document.createElement('div');
-    mobileHud.className = 'hero-hud--mobile';
-    mobileHud.innerHTML = '<span class="dot" aria-hidden="true"></span><span>Swipe to explore</span>';
-    (mount.parentElement || mount).appendChild(mobileHud);
-    // Show after 1.2s, fade after 6s OR on first pointerdown, whichever first.
-    setTimeout(() => mobileHud.classList.add('is-shown'), 1200);
-    const fadeMobileHud = () => {
-      mobileHud.classList.add('is-faded');
-      clearTimeout(mobileHudTimer);
-      mobileHudTimer = setTimeout(() => { mobileHud.style.display = 'none'; }, 700);
-      mount.removeEventListener('pointerdown', fadeMobileHud);
-    };
-    mobileHudTimer = setTimeout(fadeMobileHud, 6000);
-    mount.addEventListener('pointerdown', fadeMobileHud, { once: true });
-  }
-
-  // ---- Pause rAF when off-screen -------------------------------
+  // Pause rAF when off-screen
   const io = new IntersectionObserver(([e]) => {
     state.isVisible = e.isIntersecting;
   }, { threshold: 0 });
   io.observe(mount);
 
-  // ---- Mobile auto-orbit --------------------------------------------
-  // On touch devices, no mouse = no parallax. The scene reads as a static
-  // video. Slow auto-yaw when the user hasn't touched in 3s makes the
-  // 3D-ness obvious without feeling like a screensaver. Resets on touch.
-  let autoYawAdd = 0;
-  let lastInteractAt = performance.now();
-  mount.addEventListener('pointerdown', () => { lastInteractAt = performance.now(); autoYawAdd *= 0.3; });
-  mount.addEventListener('pointermove', () => { lastInteractAt = performance.now(); }, { passive: true });
-
-  // ---- Frame-time sampler --------------------------------------
+  // ---- Frame loop ----------------------------------------------
   const clock = new THREE.Clock();
   let raf = 0;
-  let lastHudT = 0;
 
   function loop() {
     raf = requestAnimationFrame(loop);
-    if (!state.isVisible) return;     // <-- pause when hero out of viewport
+    if (!state.isVisible) return;
 
-    const dt = Math.min(clock.getDelta(), 0.1); // clamp big jumps after tab-switch
+    const dt = Math.min(clock.getDelta(), 0.1);
     if (!reduced) state.time += dt;
 
     // Lerp pointer
     gx += (mx - gx) * 0.08;
     gy += (my - gy) * 0.08;
 
-    // Mobile auto-orbit — slowly yaw when the user hasn't interacted in 3s.
-    // Capped to a small total range (~±0.4 rad) so it never goes full rotation.
-    // Disabled on desktop (isMobile false) — desktop has mouse parallax already.
-    if (isMobile) {
-      const idle = (performance.now() - lastInteractAt) / 1000;
-      if (idle > 3 && autoYawAdd < 0.4) {
-        // ease in over the first second past threshold
-        const ramp = Math.min(1, (idle - 3) / 1.0);
-        autoYawAdd += dt * 0.18 * ramp;     // ~0.18 rad/sec at full ramp
-      } else if (idle < 0.5) {
-        // decay after touch
-        autoYawAdd *= (1 - dt * 4);
-        if (Math.abs(autoYawAdd) < 0.001) autoYawAdd = 0;
-      }
-    }
-
-    // Mouse-orbit YAW (drag + parallax + auto). Pitch is small. These accumulate
-    // outside the camera-orbit math below — drag rotates the camera around the
-    // look point in 3D space, not the mesh. Real parallax = mountain peaks
-    // occlude each other as the camera arcs around them.
-    const orbitY = gx * 0.30 + yawAdd + autoYawAdd;
+    // Mouse-orbit YAW (drag + parallax)
+    const orbitY = gx * 0.30 + yawAdd;
     const orbitX = gy * 0.20 + pitchAdd;
-    // Wireframe overlay tracks the camera's arc so it stays aligned with the
-    // terrain silhouette (not the rotated world).
-    terrain.rotation.y = orbitY * 0.35;          // slight world rotation
-    wire.rotation.y    = orbitY * 0.35;
-    grid.rotation.y    = orbitY * 0.35;
+    terrain.rotation.y = orbitY * 0.35;
 
     uniforms.uTime.value   = state.time;
     uniforms.uMouse.value.set(gx, gy);
     uniforms.uScroll.value = state.scroll;
 
-    // Camera path — straight-line lerp along the descent (camStart→camMid→camEnd)
-    // gives a smooth dolly-in: far+high at scroll=0, close+low at scroll=1.
-    // The look point is FIXED at the mountain peak so the orbit below can
-    // rotate the camera around it without the look chasing.
+    // Camera path — scroll-driven descent around fixed pivot (mountain peak)
     const t = state.scroll;
     const half = t < 0.5 ? t * 2 : 1;
     const base = t < 0.5 ? lerpV(camStart, camMid, half) : lerpV(camMid, camEnd, half);
-    // Pivot = look point = the mountain peak. Always look at this point.
     const pivot = lookStart;
-    // Scroll-yaw rotates the camera around this point. With a 50° total arc,
-    // the user sees the mountain rotate from a near-front view at the top of
-    // the hero to a front-left 3/4 view at the bottom — real "walking around
-    // the peak" motion. 50° (not 65°) keeps the camera's z > 0 (in front of
-    // the mesh) at the final scroll position; beyond ~55° the camera would
-    // drift behind the mountain back face.
+
     const SCROLL_YAW_MAX = 50 * Math.PI / 180;
     const scrollYaw = t * SCROLL_YAW_MAX;
 
-    // Compose camera position = pivot + scrollRotation(userRotation(baseOffset))
-    // Step 0 — offset from pivot to base camera position (along scroll-driven path)
+    // Step 0 — offset from pivot
     let ox = base.x - pivot.x;
     let oy = base.y - pivot.y;
     let oz = base.z - pivot.z;
 
-    // Step 1 — apply scroll-orbit around world Y axis (around the look pivot)
+    // Step 1 — scroll-orbit around world Y
     const cS = Math.cos(scrollYaw);
     const sS = Math.sin(scrollYaw);
     let r1x = ox * cS - oz * sS;
     let r1z = ox * sS + oz * cS;
     let r1y = oy;
 
-    // Step 2 — apply user yaw on top of scroll orbit (still around the pivot)
+    // Step 2 — user yaw on top of scroll orbit
     const cy = Math.cos(orbitY);
     const sy = Math.sin(orbitY);
     let r2x = r1x * cy - r1z * sy;
     let r2z = r1x * sy + r1z * cy;
     let r2y = r1y;
 
-    // Step 3 — apply user pitch (small vertical tilt around world X)
+    // Step 3 — user pitch (small vertical tilt)
     const px = Math.max(-0.45, Math.min(0.45, orbitX));
     const cx = Math.cos(px);
     const sx = Math.sin(px);
@@ -547,14 +390,6 @@
     }
 
     renderer.render(scene, camera);
-
-    // HUD frame-time (lightweight, ~1Hz)
-    const now = performance.now();
-    if (now - lastHudT > 1000) {
-      lastHudT = now;
-      const fps = Math.min(999, Math.round(1000/dt));
-      hud.firstChild.textContent = `WebGL terrain · ${SEG*SEG} verts · ${fps} fps`;
-    }
   }
   loop();
 
@@ -567,14 +402,10 @@
     ro.disconnect();
     geom.dispose();
     mat.dispose();
-    wireGeom.dispose();
-    wireMat.dispose();
     if (particles) {
       particles.geometry.dispose();
       particles.material.dispose();
     }
-    grid.geometry.dispose();
-    grid.material.dispose();
     renderer.dispose();
   });
 })();
