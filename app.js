@@ -116,12 +116,13 @@
   (function heroReveal() {
     const title = document.querySelector('.hero__title');
     if (!title) return;
+    // Always reveal — just skip the staggered transition under reduced motion.
     if (REDUCED) {
-      document.querySelectorAll('.hero__title .line > span').forEach(s => s.style.transform = 'translateY(0)');
-      title.classList.add('is-in');
-      return;
+      document.querySelectorAll('.hero__title .line > span').forEach(s => {
+        s.style.transition = 'none';
+      });
     }
-    setTimeout(() => title.classList.add('is-in'), 60);
+    title.classList.add('is-in');
   })();
 
   // ---------------------------------------------------------------

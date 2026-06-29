@@ -297,8 +297,9 @@ ul, ol { list-style: none; }
 
 .splash.is-out {
   opacity: 0; pointer-events: none;
-  transition: opacity 480ms var(--ease), clip-path 760ms cubic-bezier(0.86, 0, 0.07, 1);
+  transition: opacity 700ms var(--ease), transform 700ms var(--ease), clip-path 800ms cubic-bezier(0.86, 0, 0.07, 1);
   clip-path: inset(0 0 100% 0);  /* wipe up */
+  transform: translateY(-12px);
 }
 
 /* Body-level flags while splash is active */
@@ -306,6 +307,21 @@ body.is-splash { overflow: hidden; }
 body.is-splash .cursor,
 body.is-splash .grain,
 body.is-splash .nav { opacity: 0; }
+
+/* Hero content fades in as splash wipes up — so they blend rather than snap. */
+.hero__title,
+.hero__lede,
+.hero__anchors {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 700ms var(--ease), transform 800ms cubic-bezier(.22, 1, .36, 1);
+}
+body:not(.is-splash) .hero__title,
+body:not(.is-splash) .hero__lede,
+body:not(.is-splash) .hero__anchors {
+  opacity: 1;
+  transform: translateY(0);
+}
 
 @media (prefers-reduced-motion: reduce) {
   .splash__grain { animation: none; }
@@ -405,12 +421,20 @@ body.is-splash .nav { opacity: 0; }
 .hero__title .line { display: block; overflow: hidden; padding-bottom: 0.06em; }
 .hero__title .line > span {
   display: inline-block;
+  /* Default (no-JS) state: visible. JS adds .is-in to animate. */
+  opacity: 1;
+  transform: translateY(0);
+  will-change: transform, opacity;
+}
+/* Only hide the lines when JS has flagged the page, so they animate IN. */
+.js .hero__title:not(.is-in) .line > span {
+  opacity: 0;
   transform: translateY(110%);
-  will-change: transform;
 }
 .js .hero__title.is-in .line > span {
+  opacity: 1;
   transform: translateY(0);
-  transition: transform 1100ms cubic-bezier(.22, 1, .36, 1);
+  transition: transform 1100ms cubic-bezier(.22, 1, .36, 1), opacity 800ms var(--ease);
 }
 .js .hero__title.is-in .line:nth-child(1) > span { transition-delay: 100ms; }
 .js .hero__title.is-in .line:nth-child(2) > span { transition-delay: 220ms; }
@@ -433,20 +457,21 @@ body.is-splash .nav { opacity: 0; }
 /* Hero CTAs — "See the work" + email */
 .hero__anchors {
   margin-top: 36px;
-  display: flex; flex-wrap: wrap; gap: 16px 20px;
+  display: flex; flex-wrap: wrap; gap: 12px;
   align-items: center;
 }
 .hero__anchor {
   display: inline-flex; align-items: center;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  padding: 14px 22px;
+  padding: 12px 18px;
   border: 1px solid var(--ink);
   color: var(--ink);
   background: transparent;
+  white-space: nowrap;
   transition: background 240ms var(--ease), color 240ms var(--ease), transform 240ms var(--ease);
 }
 .hero__anchor:hover {
@@ -725,8 +750,9 @@ body.is-splash .nav { opacity: 0; }
 }
 @media (min-width: 720px) {
   .contact__anchors {
-    grid-template-columns: repeat(4, 1fr);
-    max-width: 920px;
+    grid-template-columns: repeat(2, minmax(260px, 360px));
+    max-width: 760px;
+    justify-content: center;
   }
 }
 .contact__anchor {
