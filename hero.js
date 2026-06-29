@@ -379,21 +379,53 @@
   }
   const state = { scroll: 0, time: 0, isVisible: false };
 
-  // ---- HUD (debug readout — top-right of canvas, under nav CTA) ----
+  // ---- HUD (debug readout — top-right of hero, under nav CTA) ----
+  // Mounted into the .hero section (NOT into .hero__canvas) because the canvas
+  // now has a right-edge mask. If the HUD lived inside .hero__canvas, the mask
+  // would fade it into the paper background too.
   const hud = document.createElement('div');
   hud.className = 'hero-hud';
-  hud.style.cssText = 'position:absolute;top:72px;right:24px;font-family:var(--mono);font-size:9.5px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-2);background:rgba(244,241,234,0.82);padding:6px 10px;border:1px solid var(--line-soft);backdrop-filter:blur(4px);pointer-events:none;z-index:4;line-height:1.6;white-space:nowrap;text-align:right;';
   // Hidden on touch + small viewports — orbit/wireframe toggles are
   // desktop debug affordances, not user-facing chrome.
   if (window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 720) hud.style.display = 'none';
   hud.innerHTML = `WebGL terrain · ${SEG*SEG} verts<br><span style="color:var(--mute-2)">drag to orbit · M wireframe · G grid</span>`;
-  mount.appendChild(hud);
+  // Append to .hero (section), not .hero__canvas (the masked mount).
+  (mount.parentElement || mount).appendChild(hud);
+
+  // ---- Mobile HUD (slim, friendly, hides after first interaction) --------
+  let mobileHud = null;
+  let mobileHudTimer = 0;
+  if (isMobile) {
+    mobileHud = document.createElement('div');
+    mobileHud.className = 'hero-hud--mobile';
+    mobileHud.innerHTML = '<span class="dot" aria-hidden="true"></span><span>Swipe to explore</span>';
+    (mount.parentElement || mount).appendChild(mobileHud);
+    // Show after 1.2s, fade after 6s OR on first pointerdown, whichever first.
+    setTimeout(() => mobileHud.classList.add('is-shown'), 1200);
+    const fadeMobileHud = () => {
+      mobileHud.classList.add('is-faded');
+      clearTimeout(mobileHudTimer);
+      mobileHudTimer = setTimeout(() => { mobileHud.style.display = 'none'; }, 700);
+      mount.removeEventListener('pointerdown', fadeMobileHud);
+    };
+    mobileHudTimer = setTimeout(fadeMobileHud, 6000);
+    mount.addEventListener('pointerdown', fadeMobileHud, { once: true });
+  }
 
   // ---- Pause rAF when off-screen -------------------------------
   const io = new IntersectionObserver(([e]) => {
     state.isVisible = e.isIntersecting;
   }, { threshold: 0 });
   io.observe(mount);
+
+  // ---- Mobile auto-orbit --------------------------------------------
+  // On touch devices, no mouse = no parallax. The scene reads as a static
+  // video. Slow auto-yaw when the user hasn't touched in 3s makes the
+  // 3D-ness obvious without feeling like a screensaver. Resets on touch.
+  let autoYawAdd = 0;
+  let lastInteractAt = performance.now();
+  mount.addEventListener('pointerdown', () => { lastInteractAt = performance.now(); autoYawAdd *= 0.3; });
+  mount.addEventListener('pointermove', () => { lastInteractAt = performance.now(); }, { passive: true });
 
   // ---- Frame-time sampler --------------------------------------
   const clock = new THREE.Clock();
@@ -411,8 +443,24 @@
     gx += (mx - gx) * 0.08;
     gy += (my - gy) * 0.08;
 
+    // Mobile auto-orbit — slowly yaw when the user hasn't interacted in 3s.
+    // Capped to a small total range (~±0.4 rad) so it never goes full rotation.
+    // Disabled on desktop (isMobile false) — desktop has mouse parallax already.
+    if (isMobile) {
+      const idle = (performance.now() - lastInteractAt) / 1000;
+      if (idle > 3 && autoYawAdd < 0.4) {
+        // ease in over the first second past threshold
+        const ramp = Math.min(1, (idle - 3) / 1.0);
+        autoYawAdd += dt * 0.18 * ramp;     // ~0.18 rad/sec at full ramp
+      } else if (idle < 0.5) {
+        // decay after touch
+        autoYawAdd *= (1 - dt * 4);
+        if (Math.abs(autoYawAdd) < 0.001) autoYawAdd = 0;
+      }
+    }
+
     // Mouse orbit — drives visible yaw on the camera (and the wireframe overlay if visible)
-    const orbitY = gx * 0.55 + yawAdd;
+    const orbitY = gx * 0.55 + yawAdd + autoYawAdd;
     const orbitX = gy * 0.35 + pitchAdd;
     terrain.rotation.y = orbitY;
     wire.rotation.y    = orbitY;
