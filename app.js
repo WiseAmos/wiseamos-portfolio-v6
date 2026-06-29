@@ -285,7 +285,7 @@
         ? `<span class="stars">★ ${p.stars}</span>`
         : `<span class="wip">WIP</span>`;
       const live = p.liveDemo
-        ? `<span class="work-card__live">LIVE ↗</span>`
+        ? `<span class="work-card__live">LIVE</span>`
         : '';
       const art = p.art || { kind: 'grid' };
       return `
@@ -306,7 +306,6 @@
             <p class="work-card__desc">${p.desc}</p>
             <div class="work-card__meta">
               ${stars}
-              <span class="arrow" aria-hidden="true">↗</span>
             </div>
           </div>
         </a>
@@ -349,9 +348,27 @@
       });
     }
 
-    // Re-observe the bento grid now that cards exist (child list changed)
-    if (!REDUCED && window.__sectionRevealIO) {
-      window.__sectionRevealIO.observe(grid);
+    // Per-card scroll reveal: each card observes its own viewport
+    // intersection. As cards scroll into view, they fade + lift. The
+    // cascade is driven by nth-of-type in CSS, so cards entering
+    // together stagger naturally. This replaces the parent-level IO
+    // re-observe (which fired all 6 cards at once on grid entry).
+    if (!REDUCED && 'IntersectionObserver' in window) {
+      const cardIO = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('is-in');
+              cardIO.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.15, rootMargin: '0px 0px -8% 0px' }
+      );
+      grid.querySelectorAll('.work-card').forEach((c) => cardIO.observe(c));
+    } else {
+      // Reduced motion / no IO: show all cards immediately
+      grid.querySelectorAll('.work-card').forEach((c) => c.classList.add('is-in'));
     }
   })();
 

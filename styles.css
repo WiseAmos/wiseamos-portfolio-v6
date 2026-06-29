@@ -418,7 +418,13 @@ body:not(.is-splash) .hero__anchors {
   color: var(--clay);
   font-variation-settings: "opsz" 144, "SOFT" 80;
 }
-.hero__title .line { display: block; overflow: hidden; padding-bottom: 0.06em; }
+.hero__title .line {
+  display: block;
+  overflow: hidden;
+  /* Room above for ascenders/diacritics, room below for descenders (g, p, y).
+     Fraunces descender at 48px is ~12px; 0.22em ≈ 10.5px + visual breath. */
+  padding: 0.04em 0 0.22em;
+}
 .hero__title .line > span {
   display: inline-block;
   /* Default (no-JS) state: visible. JS adds .is-in to animate. */
@@ -563,33 +569,39 @@ body:not(.is-splash) .hero__anchors {
   transform: translateY(0);
 }
 
-/* Bento card stagger — header reveals first, then each card 140ms apart */
+/* Bento card scroll-driven reveal — each card observes its own viewport
+   intersection (not the parent's). The IO adds .is-in per card with a
+   small cascade based on in-viewport order so groups of cards entering
+   together fade in sequentially instead of in lockstep. */
 [data-bento] {
   /* No-op container; children get per-card reveal */
 }
 [data-bento] .work-card {
   opacity: 0;
-  transform: translateY(44px);
+  transform: translateY(40px);
   transition:
-    opacity 800ms var(--ease-out),
-    transform 800ms var(--ease-out),
+    opacity 700ms var(--ease-out),
+    transform 700ms var(--ease-out),
     background 320ms;
   transition-delay: 0ms;
 }
-[data-bento].is-in .work-card {
+[data-bento] .work-card.is-in {
   opacity: 1;
   transform: translateY(0);
 }
-[data-bento].is-in .work-card:nth-child(1) { transition-delay: 0ms; }
-[data-bento].is-in .work-card:nth-child(2) { transition-delay: 140ms; }
-[data-bento].is-in .work-card:nth-child(3) { transition-delay: 280ms; }
-[data-bento].is-in .work-card:nth-child(4) { transition-delay: 420ms; }
-[data-bento].is-in .work-card:nth-child(5) { transition-delay: 560ms; }
-[data-bento].is-in .work-card:nth-child(6) { transition-delay: 700ms; }
+/* Per-card cascade by in-viewport order: cards 1, 2, 3 ... as they enter */
+[data-bento] .work-card.is-in:nth-of-type(1) { transition-delay: 0ms; }
+[data-bento] .work-card.is-in:nth-of-type(2) { transition-delay: 120ms; }
+[data-bento] .work-card.is-in:nth-of-type(3) { transition-delay: 240ms; }
+[data-bento] .work-card.is-in:nth-of-type(4) { transition-delay: 360ms; }
+[data-bento] .work-card.is-in:nth-of-type(5) { transition-delay: 480ms; }
+[data-bento] .work-card.is-in:nth-of-type(6) { transition-delay: 600ms; }
 @media (prefers-reduced-motion: reduce) {
   [data-bento] .work-card {
     transition-duration: 1ms !important;
     transition-delay: 0ms !important;
+    opacity: 1 !important;
+    transform: none !important;
   }
 }
 
