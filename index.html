@@ -122,8 +122,8 @@
     </section>
 
     <!-- ============== WORK ============== -->
-    <section class="section work" id="work" data-reveal>
-      <header class="section__head">
+    <section class="section work" id="work">
+      <header class="section__head" data-reveal>
         <span class="eyebrow">Selected work</span>
         <h2 class="section__title">Six things I shipped recently.</h2>
         <p class="section__lede">
@@ -132,7 +132,7 @@
         </p>
       </header>
 
-      <div class="work__grid" id="workGrid"></div>
+      <div class="work__grid" id="workGrid" data-bento></div>
     </section>
 
     <!-- ============== ABOUT ============== -->
@@ -169,27 +169,45 @@
           long-running product. I reply within a day.
         </p>
 
-        <div class="contact__anchors">
-          <a class="contact__anchor contact__anchor--solid" href="mailto:amosgej@gmail.com">
-            <span class="contact__anchor-lbl">Email</span>
-            <span class="contact__anchor-val">amosgej@gmail.com ↗</span>
-          </a>
-          <a class="contact__anchor" href="https://github.com/WiseAmos" target="_blank" rel="noopener">
-            <span class="contact__anchor-lbl">GitHub</span>
-            <span class="contact__anchor-val">@WiseAmos ↗</span>
-          </a>
+        <div class="contact__panel">
+          <div class="contact__anchors">
+            <a class="contact__anchor contact__anchor--solid" href="mailto:amosgej@gmail.com">
+              <span class="contact__anchor-lbl">Email</span>
+              <span class="contact__anchor-val">amosgej@gmail.com ↗</span>
+            </a>
+            <a class="contact__anchor" href="https://github.com/WiseAmos" target="_blank" rel="noopener">
+              <span class="contact__anchor-lbl">GitHub</span>
+              <span class="contact__anchor-val">@WiseAmos ↗</span>
+            </a>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- ============== FOOTER ============== -->
-    <footer class="footer">
-      <div class="footer__bottom">
-        <span>© 2026 · Amos Goh · Singapore</span>
+    <footer class="footer" data-reveal>
+      <div class="footer__top">
+        <p class="footer__cta">
+          <span class="footer__cta-pre">let's build →</span>
+          <a href="mailto:amosgej@gmail.com" class="footer__cta-link">
+            amosgej@gmail.com <span aria-hidden="true">↗</span>
+          </a>
+        </p>
         <a href="#top" class="footer__top-link" data-top>
-          Back to top
           <span class="arrow" aria-hidden="true">↑</span>
+          <span>Back to top</span>
         </a>
+      </div>
+
+      <div class="footer__mark">
+        <h2 class="footer__name">Amos</h2>
+        <span class="footer__rule" aria-hidden="true"></span>
+        <p class="footer__caption">Engineer · Singapore · Building things that have to work</p>
+      </div>
+
+      <div class="footer__bottom">
+        <span class="footer__copy">© 2026 · Made with care</span>
+        <span class="footer__version">v6.0.0</span>
       </div>
     </footer>
   </main>

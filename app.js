@@ -153,7 +153,7 @@
   // 3. Section reveal on scroll
   // ---------------------------------------------------------------
   (function sectionReveal() {
-    const els = document.querySelectorAll('[data-reveal]');
+    const els = document.querySelectorAll('[data-reveal], [data-bento]');
     if (REDUCED) {
       els.forEach(el => el.classList.add('is-in'));
       return;
@@ -167,6 +167,8 @@
       });
     }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
     els.forEach(el => io.observe(el));
+    // Expose so later-rendered sections (work bento) can be re-observed
+    window.__sectionRevealIO = io;
   })();
 
   // ---------------------------------------------------------------
@@ -345,6 +347,11 @@
           if (!raf) raf = requestAnimationFrame(tick);
         });
       });
+    }
+
+    // Re-observe the bento grid now that cards exist (child list changed)
+    if (!REDUCED && window.__sectionRevealIO) {
+      window.__sectionRevealIO.observe(grid);
     }
   })();
 
