@@ -374,12 +374,21 @@
     return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t };
   }
 
+  // Scroll-driven orbit camera. The hero section is .hero { min-height: 88vh },
+// which is shorter than the viewport — there's nothing to scroll WITHIN the
+// hero. So we drive the camera orbit from how far the user has scrolled PAST
+// the hero top, not within it. state.scroll = 0 when hero top hits viewport
+// top (user just landed), = 1 when the hero bottom has scrolled past the
+// bottom of the viewport (user has moved on to the next section).
   function updateScroll() {
     const hero = document.getElementById('hero');
     if (!hero) { state.scroll = 0; return; }
     const r = hero.getBoundingClientRect();
-    const h = hero.offsetHeight - window.innerHeight;
-    state.scroll = h > 0 ? Math.max(0, Math.min(1, -r.top / h)) : 0;
+    const vh = window.innerHeight;
+    // Distance from "hero top at viewport top" to "hero bottom at viewport bottom"
+    const travel = r.height;                  // hero height (≈ 88vh)
+    const scrolled = Math.max(0, -r.top);     // how far past hero top the user has scrolled
+    state.scroll = travel > 0 ? Math.max(0, Math.min(1, scrolled / travel)) : 0;
   }
   const state = { scroll: 0, time: 0, isVisible: false };
 
@@ -479,34 +488,53 @@
     uniforms.uMouse.value.set(gx, gy);
     uniforms.uScroll.value = state.scroll;
 
-    // Camera path
+    // Camera path — straight-line lerp along the descent (camStart→camMid→camEnd)
+    // gives a smooth dolly-in: far+high at scroll=0, close+low at scroll=1.
+    // The look point is FIXED at the mountain peak so the orbit below can
+    // rotate the camera around it without the look chasing.
     const t = state.scroll;
     const half = t < 0.5 ? t * 2 : 1;
     const base = t < 0.5 ? lerpV(camStart, camMid, half) : lerpV(camMid, camEnd, half);
-    const look = lerpV(lookStart, lookEnd, t);
+    // Pivot = look point = the mountain peak. Always look at this point.
+    const pivot = lookStart;
+    // Scroll-yaw rotates the camera around this point. With a 50° total arc,
+    // the user sees the mountain rotate from a near-front view at the top of
+    // the hero to a front-left 3/4 view at the bottom — real "walking around
+    // the peak" motion. 50° (not 65°) keeps the camera's z > 0 (in front of
+    // the mesh) at the final scroll position; beyond ~55° the camera would
+    // drift behind the mountain back face.
+    const SCROLL_YAW_MAX = 50 * Math.PI / 180;
+    const scrollYaw = t * SCROLL_YAW_MAX;
 
-    // True camera orbit — the camera moves AROUND the look point on a circle
-    // (yaw) and a vertical arc (pitch). Mesh stays fixed. Parallax is real
-    // because nearby peaks shift relative to distant ones as the camera arcs.
-    // Offset vector from look to base camera position, then rotate by yaw+pitch.
-    const ox = base.x - look.x;
-    const oy = base.y - look.y;
-    const oz = base.z - look.z;
-    // Yaw (around world Y)
+    // Compose camera position = pivot + scrollRotation(userRotation(baseOffset))
+    // Step 0 — offset from pivot to base camera position (along scroll-driven path)
+    let ox = base.x - pivot.x;
+    let oy = base.y - pivot.y;
+    let oz = base.z - pivot.z;
+
+    // Step 1 — apply scroll-orbit around world Y axis (around the look pivot)
+    const cS = Math.cos(scrollYaw);
+    const sS = Math.sin(scrollYaw);
+    let r1x = ox * cS - oz * sS;
+    let r1z = ox * sS + oz * cS;
+    let r1y = oy;
+
+    // Step 2 — apply user yaw on top of scroll orbit (still around the pivot)
     const cy = Math.cos(orbitY);
     const sy = Math.sin(orbitY);
-    let rx = ox * cy - oz * sy;
-    let rz = ox * sy + oz * cy;
-    let ry = oy;
-    // Pitch (around world X) — keep small, clamp at the original look-y
+    let r2x = r1x * cy - r1z * sy;
+    let r2z = r1x * sy + r1z * cy;
+    let r2y = r1y;
+
+    // Step 3 — apply user pitch (small vertical tilt around world X)
     const px = Math.max(-0.45, Math.min(0.45, orbitX));
     const cx = Math.cos(px);
     const sx = Math.sin(px);
-    const ry2 = ry * cx - rz * sx;
-    const rz2 = ry * sx + rz * cx;
-    ry = ry2; rz = rz2;
-    camera.position.set(look.x + rx, look.y + ry, look.z + rz);
-    camera.lookAt(look.x, look.y, look.z);
+    const r3y = r2y * cx - r2z * sx;
+    const r3z = r2y * sx + r2z * cx;
+
+    camera.position.set(pivot.x + r2x, pivot.y + r3y, pivot.z + r3z);
+    camera.lookAt(pivot.x, pivot.y, pivot.z);
 
     // Particles drift
     if (particles && !reduced) {
