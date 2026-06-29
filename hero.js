@@ -360,12 +360,16 @@
   grid.visible = false;
   scene.add(grid);
 
-  // ---- Camera paths (scroll-driven descent + mouse orbit) ------
-  const camStart  = { x: 0,    y: 3.6,  z: 8.5 };
-  const camMid    = { x: 0.6,  y: 1.4,  z: 4.2 };
-  const camEnd    = { x: 1.4,  y: 0.3,  z: 2.4 };
-  const lookStart = { x: 3.2,  y: 0.4,  z: 0 };
-  const lookEnd   = { x: 4.2,  y: 1.2,  z: 0 };
+  // ---- Camera paths (scroll-driven descent + camera orbit) --------
+  // Pulled back (z: 8.5→11, 4.2→5.5, 2.4→3.2) from the v3 hero — the mountain
+  // read as too zoomed-in at narrow aspects, the peak filled the canvas edge
+  // to edge with no breathing room. The new distances leave ~25% sky on top
+  // and ~20% paper band on the bottom at all viewports.
+  const camStart  = { x: 0,    y: 3.8,  z: 11.0 };
+  const camMid    = { x: 0.6,  y: 1.5,  z: 5.5  };
+  const camEnd    = { x: 1.4,  y: 0.3,  z: 3.2  };
+  const lookStart = { x: 3.2,  y: 0.5,  z: 0    };
+  const lookEnd   = { x: 4.2,  y: 1.2,  z: 0    };
   function lerpV(a, b, t) {
     return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t };
   }
@@ -459,12 +463,17 @@
       }
     }
 
-    // Mouse orbit — drives visible yaw on the camera (and the wireframe overlay if visible)
-    const orbitY = gx * 0.55 + yawAdd + autoYawAdd;
-    const orbitX = gy * 0.35 + pitchAdd;
-    terrain.rotation.y = orbitY;
-    wire.rotation.y    = orbitY;
-    grid.rotation.y    = orbitY;
+    // Mouse-orbit YAW (drag + parallax + auto). Pitch is small. These accumulate
+    // outside the camera-orbit math below — drag rotates the camera around the
+    // look point in 3D space, not the mesh. Real parallax = mountain peaks
+    // occlude each other as the camera arcs around them.
+    const orbitY = gx * 0.30 + yawAdd + autoYawAdd;
+    const orbitX = gy * 0.20 + pitchAdd;
+    // Wireframe overlay tracks the camera's arc so it stays aligned with the
+    // terrain silhouette (not the rotated world).
+    terrain.rotation.y = orbitY * 0.35;          // slight world rotation
+    wire.rotation.y    = orbitY * 0.35;
+    grid.rotation.y    = orbitY * 0.35;
 
     uniforms.uTime.value   = state.time;
     uniforms.uMouse.value.set(gx, gy);
@@ -476,21 +485,28 @@
     const base = t < 0.5 ? lerpV(camStart, camMid, half) : lerpV(camMid, camEnd, half);
     const look = lerpV(lookStart, lookEnd, t);
 
-    // Ambient camera sway — slow sinusoidal drift in both axes so the
-    // scene is never visually frozen even when the mouse is still. The
-    // "is this a video?" answer becomes obviously no once you see the
-    // parallax shift across ridges.
-    // No ambient camera sway — the scene is parallax-stable. Sun drift
-    // and vertex breathing provide all the motion. Sway was reading as
-    // "dancing" so we leave the camera locked at its scroll/derived
-    // position.
-    const swayX = 0;
-    const swayY = 0;
-
-    camera.position.x = base.x + Math.sin(orbitY * 0.6) * 0.4 + swayX;
-    camera.position.y = base.y - Math.abs(orbitX) * 0.5 - 0.15 + swayY;
-    camera.position.z = base.z + Math.cos(orbitY * 0.6) * 0.4;
-    camera.lookAt(look.x, look.y + orbitX * 0.4, look.z);
+    // True camera orbit — the camera moves AROUND the look point on a circle
+    // (yaw) and a vertical arc (pitch). Mesh stays fixed. Parallax is real
+    // because nearby peaks shift relative to distant ones as the camera arcs.
+    // Offset vector from look to base camera position, then rotate by yaw+pitch.
+    const ox = base.x - look.x;
+    const oy = base.y - look.y;
+    const oz = base.z - look.z;
+    // Yaw (around world Y)
+    const cy = Math.cos(orbitY);
+    const sy = Math.sin(orbitY);
+    let rx = ox * cy - oz * sy;
+    let rz = ox * sy + oz * cy;
+    let ry = oy;
+    // Pitch (around world X) — keep small, clamp at the original look-y
+    const px = Math.max(-0.45, Math.min(0.45, orbitX));
+    const cx = Math.cos(px);
+    const sx = Math.sin(px);
+    const ry2 = ry * cx - rz * sx;
+    const rz2 = ry * sx + rz * cx;
+    ry = ry2; rz = rz2;
+    camera.position.set(look.x + rx, look.y + ry, look.z + rz);
+    camera.lookAt(look.x, look.y, look.z);
 
     // Particles drift
     if (particles && !reduced) {

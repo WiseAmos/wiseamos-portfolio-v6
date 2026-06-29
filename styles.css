@@ -442,20 +442,24 @@ body.is-splash .nav { opacity: 0; }
   /* Right-edge fade — the terrain mesh is finite (12 units wide) and at narrow
      aspect ratios (small desktop, browser-zoomed desktop) its right boundary
      lands inside the camera frustum, exposing a hard clip. The mask dissolves
-     the canvas alpha into the paper background from ~60% horizontal onward,
-     which reads as the mountain simply receding into haze. The HUD is mounted
-     outside .hero__canvas (into .hero) so this mask doesn't affect it. */
-  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 55%, transparent 100%);
-          mask-image: linear-gradient(to right, #000 0%, #000 55%, transparent 100%);
+     the canvas alpha into the paper background from ~75% horizontal onward,
+     which reads as the mountain receding into haze. Pushed the fade start
+     back from 55% → 75% so the bulk of the canvas (75%) is at full opacity —
+     the fade band is now a thin 25% gradient instead of a heavy 45% gradient.
+     The HUD is mounted outside .hero__canvas (into .hero) so this mask
+     doesn't affect it. */
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 75%, transparent 100%);
+          mask-image: linear-gradient(to right, #000 0%, #000 75%, transparent 100%);
 }
 /* Bottom-edge fade is softer — kills any horizontal line where the terrain
-   meets the page background at the hero bottom. */
+   meets the page background at the hero bottom. Lighter and shorter (12% vs
+   18%) so it doesn't read as a heavy gradient on the page. */
 .hero__canvas::after {
   content: '';
   position: absolute;
   inset: auto 0 0 0;
-  height: 18%;
-  background: linear-gradient(to top, var(--paper), transparent);
+  height: 12%;
+  background: linear-gradient(to top, rgba(244, 241, 234, 0.85), transparent);
   pointer-events: none;
   z-index: 1;
 }
