@@ -219,6 +219,100 @@ ul, ol { list-style: none; }
   .nav__links { display: none; }
 }
 
+/* ---------- 5b. Splash (grain + scramble) ----------------------- */
+.splash {
+  position: fixed; inset: 0; z-index: 1000;
+  background: var(--paper);
+  display: grid; place-items: center;
+  pointer-events: auto;
+  overflow: hidden;
+}
+.splash__grain {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  opacity: 0.32;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  z-index: 1;
+}
+.splash__inner {
+  position: relative; z-index: 2;
+  text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 24px;
+}
+.splash__mark {
+  font-family: var(--serif);
+  font-weight: 320;
+  font-style: italic;
+  font-size: clamp(72px, 16vw, 180px);
+  line-height: 0.9;
+  color: var(--ink);
+  font-variation-settings: "opsz" 144, "SOFT" 100, "WONK" 1;
+  letter-spacing: -0.04em;
+  overflow: visible;
+}
+.splash__mark .char {
+  display: inline-block;
+  transition: color 220ms var(--ease);
+}
+.splash__mark .char.is-scrambling { color: var(--clay); }
+.splash__mark .char.is-settled   { color: var(--ink); }
+
+.splash__meta {
+  display: inline-flex; align-items: baseline; gap: 8px;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin-top: 8px;
+}
+.splash__counter {
+  font-weight: 600;
+  color: var(--clay);
+  min-width: 2.4em;
+  display: inline-block;
+  text-align: right;
+}
+.splash__counter-sep   { color: var(--mute-2); }
+.splash__counter-total { color: var(--mute-2); }
+.splash__counter-label { color: var(--mute-2); margin-left: 8px; }
+
+.splash__caption {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--mute-2);
+  position: fixed;
+  bottom: clamp(20px, 4vh, 40px);
+  left: 0; right: 0;
+  text-align: center;
+  white-space: nowrap;
+  z-index: 3;
+}
+@media (max-width: 700px) {
+  .splash__caption { font-size: 9px; letter-spacing: 0.22em; }
+}
+
+.splash.is-out {
+  opacity: 0; pointer-events: none;
+  transition: opacity 480ms var(--ease), clip-path 760ms cubic-bezier(0.86, 0, 0.07, 1);
+  clip-path: inset(0 0 100% 0);  /* wipe up */
+}
+
+/* Body-level flags while splash is active */
+body.is-splash { overflow: hidden; }
+body.is-splash .cursor,
+body.is-splash .grain,
+body.is-splash .nav { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .splash__grain { animation: none; }
+  .splash { transition-duration: 1ms; }
+  .splash__mark .char { transition: none; }
+}
+
 /* ---------- 6. Hero ---------------------------------------------- */
 .hero {
   position: relative;

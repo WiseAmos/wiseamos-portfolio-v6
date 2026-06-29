@@ -14,6 +14,103 @@
   const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ---------------------------------------------------------------
+  // 0. Splash screen (grain + scramble + counter + wipe-up dismiss)
+  // ---------------------------------------------------------------
+  (function splash() {
+    const el = document.getElementById('splash');
+    const mark = document.getElementById('splashMark');
+    const counter = document.getElementById('splashCounter');
+    if (!el) return;
+
+    document.body.classList.add('is-splash');
+
+    if (REDUCED) { el.remove(); document.body.classList.remove('is-splash'); return; }
+
+    const SCRAMBLE_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#@%&*·';
+    const SCRAMBLE_MS = 70;
+    const SETTLE_MS   = 220;
+    const HOLD_MS     = 360;
+    const EXIT_MS     = 760;
+
+    // Wrap mark text into <span class="char"> for scramble
+    let original = '';
+    let chars = [];
+    if (mark) {
+      original = mark.dataset.text || mark.textContent;
+      mark.textContent = '';
+      chars = original.split('').map(() => {
+        const span = document.createElement('span');
+        span.className = 'char is-scrambling';
+        span.textContent = SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
+        mark.appendChild(span);
+        return span;
+      });
+    }
+
+    // Counter tick from 0 → 100
+    let pct = 0;
+    if (counter) {
+      const tick = setInterval(() => {
+        const step = Math.max(1, Math.floor((100 - pct) / 18));
+        pct = Math.min(100, pct + step);
+        counter.textContent = String(pct).padStart(3, '0');
+        if (pct >= 100) clearInterval(tick);
+      }, 60);
+    }
+
+    // Scramble + settle
+    let scrambleCount = 0;
+    let settleStarted = false;
+    const scrambleLoop = setInterval(() => {
+      scrambleCount++;
+      chars.forEach((span) => {
+        if (span.classList.contains('is-settled')) return;
+        span.textContent = SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
+      });
+      if (!settleStarted && scrambleCount >= 6) {
+        settleStarted = true;
+        let settled = 0;
+        const settleLoop = setInterval(() => {
+          if (settled >= chars.length) { clearInterval(settleLoop); return; }
+          chars[settled].textContent = original[settled];
+          chars[settled].classList.remove('is-scrambling');
+          chars[settled].classList.add('is-settled');
+          settled++;
+        }, SETTLE_MS);
+      }
+    }, SCRAMBLE_MS);
+
+    const dismiss = () => {
+      clearInterval(scrambleLoop);
+      // Ensure all chars settled before exit
+      chars.forEach((span, i) => {
+        span.textContent = original[i];
+        span.classList.remove('is-scrambling');
+        span.classList.add('is-settled');
+      });
+      el.classList.add('is-out');
+      document.body.classList.remove('is-splash');
+      setTimeout(() => el.remove(), EXIT_MS + 80);
+    };
+
+    // Auto-dismiss after the full splash cycle
+    const totalHold = 6 * SCRAMBLE_MS + chars.length * SETTLE_MS + HOLD_MS;
+    const autoTimer = setTimeout(dismiss, totalHold);
+
+    // User-initiated dismiss (click / key / scroll)
+    const onUser = () => {
+      clearTimeout(autoTimer);
+      dismiss();
+      window.removeEventListener('pointerdown', onUser);
+      window.removeEventListener('keydown', onUser);
+      window.removeEventListener('scroll', onUser);
+    };
+    window.addEventListener('pointerdown', onUser, { once: true, passive: true });
+    window.addEventListener('keydown', onUser, { once: true });
+    window.addEventListener('scroll', onUser, { once: true, passive: true });
+  })();
+
+  // ---------------------------------------------------------------
   // 1. Hero line-by-line reveal on load
   // ---------------------------------------------------------------
   (function heroReveal() {
