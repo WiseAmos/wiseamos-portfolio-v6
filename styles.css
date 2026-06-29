@@ -32,7 +32,7 @@
   --mono:       'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
   /* Scale */
-  --t-hero:     clamp(48px, 9vw, 144px);
+  --t-hero:     clamp(48px, 7.6vw, 124px);
   --t-h1:       clamp(36px, 5vw, 80px);
   --t-h2:       clamp(28px, 3.4vw, 52px);
   --t-h3:       clamp(20px, 1.8vw, 28px);
@@ -222,7 +222,7 @@ ul, ol { list-style: none; }
 /* ---------- 6. Hero ---------------------------------------------- */
 .hero {
   position: relative;
-  min-height: min(88vh, 720px);
+  min-height: min(92vh, 820px);
   padding: 0 var(--pad-x);
   display: grid;
   align-content: center;
@@ -254,7 +254,7 @@ ul, ol { list-style: none; }
   max-width: var(--max);
   margin: 0 auto;
   width: 100%;
-  padding: clamp(100px, 14vh, 160px) 0 clamp(48px, 8vh, 80px);
+  padding: clamp(80px, 11vh, 130px) 0 clamp(56px, 9vh, 96px);
 }
 .hero__words {
   display: block;
